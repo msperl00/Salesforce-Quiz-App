@@ -1,0 +1,11 @@
+.nuxt
+.output
+.DS_Store
+node_modules
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/*.json
+!.gitkeep
+*.log
+.env

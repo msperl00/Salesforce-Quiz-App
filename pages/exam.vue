@@ -1,0 +1,208 @@
+<script setup lang="ts">
+import type { Question, Tag } from '~/types/quiz'
+
+const api = useQuizApi()
+
+const allQuestions = ref<Question[]>(await api.listQuestions())
+const tags = ref<Tag[]>(await api.listTags())
+const selectedTag = ref('')
+const desiredCount = ref(10)
+const started = ref(false)
+const submitted = ref(false)
+const currentIndex = ref(0)
+const answersByQuestion = ref<Record<number, number[]>>({})
+const examQuestions = ref<Question[]>([])
+
+const currentQuestion = computed(() => examQuestions.value[currentIndex.value] || null)
+
+function startExam() {
+  const pool = selectedTag.value
+    ? allQuestions.value.filter(question => question.tags.some(tag => tag.name === selectedTag.value))
+    : allQuestions.value
+
+  examQuestions.value = [...pool]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, Math.max(1, Math.min(desiredCount.value, pool.length)))
+
+  answersByQuestion.value = {}
+  currentIndex.value = 0
+  started.value = true
+  submitted.value = false
+}
+
+function toggleAnswer(questionId: number, answerId: number | undefined, checked: boolean) {
+  if (!answerId) {
+    return
+  }
+
+  const selected = new Set(answersByQuestion.value[questionId] || [])
+
+  if (checked) {
+    selected.add(answerId)
+  } else {
+    selected.delete(answerId)
+  }
+
+  answersByQuestion.value = {
+    ...answersByQuestion.value,
+    [questionId]: [...selected]
+  }
+}
+
+function isQuestionCorrect(question: Question) {
+  const selected = [...(answersByQuestion.value[question.id] || [])].sort((a, b) => a - b)
+  const correct = question.answers.filter(answer => answer.isCorrect).map(answer => answer.id as number).sort((a, b) => a - b)
+
+  return JSON.stringify(selected) === JSON.stringify(correct)
+}
+
+const score = computed(() => {
+  if (!submitted.value) {
+    return null
+  }
+
+  const correct = examQuestions.value.filter(isQuestionCorrect).length
+  const total = examQuestions.value.length
+
+  return {
+    correct,
+    total,
+    percentage: total ? Math.round((correct / total) * 100) : 0
+  }
+})
+</script>
+
+<template>
+  <div class="stack">
+    <section class="panel" style="padding: 1.25rem;">
+      <div class="section-title">
+        <div>
+          <h2>Modo examen</h2>
+          <p class="muted">Sesión cerrada con puntuación final y revisión de errores.</p>
+        </div>
+      </div>
+
+      <div class="field-grid">
+        <div class="field">
+          <label for="tag">Etiqueta</label>
+          <select id="tag" v-model="selectedTag" :disabled="started && !submitted">
+            <option value="">Todas</option>
+            <option v-for="tag in tags" :key="tag.id" :value="tag.name">{{ tag.name }}</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="count">Número de preguntas</label>
+          <input
+            id="count"
+            v-model.number="desiredCount"
+            min="1"
+            :max="allQuestions.length || 1"
+            type="number"
+            :disabled="started && !submitted"
+          >
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top: 1rem;">
+        <button class="btn primary" type="button" @click="startExam">
+          {{ started ? 'Reiniciar examen' : 'Empezar examen' }}
+        </button>
+
+        <button
+          v-if="started && !submitted"
+          class="btn ghost"
+          type="button"
+          @click="submitted = true"
+        >
+          Corregir
+        </button>
+      </div>
+    </section>
+
+    <section v-if="started && currentQuestion" class="panel" style="padding: 1.25rem;">
+      <div class="section-title">
+        <div>
+          <p class="muted">Pregunta {{ currentIndex + 1 }} de {{ examQuestions.length }}</p>
+          <h2>{{ currentQuestion.prompt }}</h2>
+        </div>
+
+        <div class="inline-actions">
+          <button class="btn small ghost" type="button" :disabled="currentIndex === 0" @click="currentIndex -= 1">
+            Anterior
+          </button>
+          <button class="btn small ghost" type="button" :disabled="currentIndex === examQuestions.length - 1" @click="currentIndex += 1">
+            Siguiente
+          </button>
+        </div>
+      </div>
+
+      <div class="choice-list">
+        <label
+          v-for="answer in currentQuestion.answers"
+          :key="answer.id || answer.text"
+          class="choice"
+          :class="{
+            correct: submitted && answer.isCorrect,
+            incorrect: submitted && (answersByQuestion[currentQuestion.id] || []).includes(answer.id || -1) && !answer.isCorrect
+          }"
+        >
+          <input
+            type="checkbox"
+            :disabled="submitted"
+            :checked="(answersByQuestion[currentQuestion.id] || []).includes(answer.id || -1)"
+            @change="toggleAnswer(currentQuestion.id, answer.id, ($event.target as HTMLInputElement).checked)"
+          >
+          <span>{{ answer.text }}</span>
+        </label>
+      </div>
+
+      <div v-if="submitted" class="stack">
+        <div class="banner" :class="isQuestionCorrect(currentQuestion) ? 'success' : 'warning'">
+          {{ isQuestionCorrect(currentQuestion) ? 'Respuesta correcta.' : 'Respuesta incorrecta.' }}
+        </div>
+        <div v-if="currentQuestion.explanation" class="banner success">
+          <strong>Explicación:</strong> {{ currentQuestion.explanation }}
+        </div>
+      </div>
+    </section>
+
+    <section v-if="score" class="panel" style="padding: 1.25rem;">
+      <div class="section-title">
+        <div>
+          <h2>Resultado final</h2>
+          <p class="muted">Revisión rápida de aciertos y fallos.</p>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <article class="stat-card">
+          <span class="muted">Aciertos</span>
+          <strong>{{ score.correct }}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="muted">Total</span>
+          <strong>{{ score.total }}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="muted">Porcentaje</span>
+          <strong>{{ score.percentage }}%</strong>
+        </article>
+      </div>
+
+      <div class="result-list" style="margin-top: 1rem;">
+        <article
+          v-for="question in examQuestions"
+          :key="question.id"
+          class="result-card"
+        >
+          <div class="section-title">
+            <p>{{ question.prompt }}</p>
+            <strong>{{ isQuestionCorrect(question) ? 'OK' : 'FAIL' }}</strong>
+          </div>
+          <p v-if="question.explanation" class="muted" style="margin-bottom: 0;">{{ question.explanation }}</p>
+        </article>
+      </div>
+    </section>
+  </div>
+</template>

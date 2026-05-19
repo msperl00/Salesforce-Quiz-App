@@ -1,0 +1,15 @@
+{
+  "name": "salesforce-quiz-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev --host 127.0.0.1 --port 4321",
+    "build": "nuxt build",
+    "preview": "node scripts/fix-preview-output.mjs && PORT=4321 HOST=127.0.0.1 node .output/server/index.mjs",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "nuxt": "^3.17.4"
+  }
+}
