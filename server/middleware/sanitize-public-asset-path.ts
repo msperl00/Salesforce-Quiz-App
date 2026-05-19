@@ -7,13 +7,22 @@ export default defineEventHandler((event) => {
     return
   }
 
-  event.path = event.path.replace(/%22/gi, '').replace(/"/g, '')
+  event.path = event.path
+    .replace(/%22/gi, '')
+    .replace(/"/g, '')
+    .replace(/\/{2,}/g, '/')
 
   if (event.node.req.url) {
-    event.node.req.url = event.node.req.url.replace(/%22/gi, '').replace(/"/g, '')
+    event.node.req.url = event.node.req.url
+      .replace(/%22/gi, '')
+      .replace(/"/g, '')
+      .replace(/\/{2,}/g, '/')
   }
 
   if (event.node.req.originalUrl) {
-    event.node.req.originalUrl = event.node.req.originalUrl.replace(/%22/gi, '').replace(/"/g, '')
+    event.node.req.originalUrl = event.node.req.originalUrl
+      .replace(/%22/gi, '')
+      .replace(/"/g, '')
+      .replace(/\/{2,}/g, '/')
   }
 })

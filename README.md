@@ -57,6 +57,15 @@ npm run build
 npm run preview
 ```
 
+Para detener o reiniciar la preview en el puerto `4321`:
+
+```bash
+npm run stop
+npm run stop-dev
+npm run restart-dev
+npm run restart-preview
+```
+
 ## JSON de importación
 
 Formato esperado:

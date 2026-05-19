@@ -12,3 +12,8 @@ command = '''
 npm run dev
 npm run build
 '''
+
+[[actions]]
+name = "detener"
+icon = "tool"
+command = "npm run stop-dev"

@@ -6,6 +6,10 @@
     "dev": "nuxt dev --host 127.0.0.1 --port 4321",
     "build": "nuxt build",
     "preview": "node scripts/fix-preview-output.mjs && PORT=4321 HOST=127.0.0.1 node .output/server/index.mjs",
+    "stop": "lsof -t -iTCP:4321 -sTCP:LISTEN | xargs kill",
+    "stop-dev": "npm run stop",
+    "restart-dev": "npm run stop; npm run dev",
+    "restart-preview": "npm run stop; npm run preview",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
