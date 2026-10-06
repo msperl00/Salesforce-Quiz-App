@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Exam } from '~/types/quiz'
+const { data: account } = await useAccount()
 
 const { data, error, refresh } = await useFetch<{ exams: Exam[] }>('/api/exams')
 const name = ref('')
@@ -41,7 +42,7 @@ async function save() {
     <section class="panel exam-panel">
       <h2>Mis exámenes</h2>
       <p class="muted">Elige qué certificación preparar. Cada examen tiene sus propias preguntas y temas.</p>
-      <form class="exam-form" @submit.prevent="save">
+      <form v-if="account?.user?.role === 'admin'" class="exam-form" @submit.prevent="save">
         <div class="field">
           <label for="exam-name">{{ editingId ? 'Renombrar examen' : 'Nuevo examen' }}</label>
           <input id="exam-name" v-model="name" required maxlength="120" placeholder="Por ejemplo, Platform Developer I" :disabled="saving">
@@ -68,7 +69,7 @@ async function save() {
           <NuxtLink class="btn primary" :to="{ path: '/', query: { examId: exam.id } }">Preguntas</NuxtLink>
           <NuxtLink class="btn ghost" :to="{ path: '/study', query: { examId: exam.id } }">Estudiar</NuxtLink>
           <NuxtLink class="btn ghost" :to="{ path: '/exam', query: { examId: exam.id } }">Simulacro</NuxtLink>
-          <button class="btn ghost small" :disabled="saving" @click="edit(exam)">Renombrar</button>
+          <button v-if="account?.user?.role === 'admin'" class="btn ghost small" :disabled="saving" @click="edit(exam)">Renombrar</button>
         </div>
       </article>
     </div>

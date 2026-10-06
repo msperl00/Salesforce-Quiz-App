@@ -1,9 +1,9 @@
 import { getQuestionById } from '~/server/utils/questions'
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, 'id'))
 
   return {
-    question: getQuestionById(id)
+    question: await getQuestionById(id)
   }
 })

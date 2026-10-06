@@ -1,3 +1,3 @@
 import { getExam } from '~/server/utils/questions'
 
-export default defineEventHandler(event => ({ exam: getExam(Number(getRouterParam(event, 'id'))) }))
+export default defineEventHandler(async event => ({ exam: await getExam(Number(getRouterParam(event, 'id'))) }))

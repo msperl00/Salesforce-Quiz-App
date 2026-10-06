@@ -14,6 +14,7 @@ export interface Question {
   examId: number
   prompt: string
   imageDataUrl: string
+  imageUrl?: string
   explanation: string
   note: string
   answers: AnswerInput[]

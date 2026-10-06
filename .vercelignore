@@ -1,0 +1,14 @@
+.git
+.codex
+.agents
+node_modules
+.nuxt
+.output
+.env
+.env.*
+data
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+configure-cloud.mjs
+.DS_Store

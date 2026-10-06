@@ -12,3 +12,6 @@ data/*.json
 !.gitkeep
 *.log
 .env
+.env.*
+!.env.example
+.vercel

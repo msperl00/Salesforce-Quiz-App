@@ -1,6 +1,7 @@
 import type { Question, QuestionPayload, QuizExport, Tag } from '~/types/quiz'
 
 export function useQuizApi() {
+  const $fetch = useRequestFetch()
   const examId = Number(useRoute().query.examId)
   async function listQuestions(params?: { search?: string, tag?: string }) {
     const query = new URLSearchParams()

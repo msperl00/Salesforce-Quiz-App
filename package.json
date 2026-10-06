@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "nuxt dev --host 127.0.0.1 --port 4321",
     "build": "nuxt build",
+    "user:create": "node --env-file-if-exists=.env scripts/create-user.mjs",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate-to-turso.mjs",
     "test": "node scripts/fix-preview-output.mjs && node --test tests/*.test.mjs",
     "preview": "node scripts/fix-preview-output.mjs && PORT=4321 HOST=127.0.0.1 node .output/server/index.mjs",
     "stop": "lsof -t -iTCP:4321 -sTCP:LISTEN | xargs kill",
@@ -14,7 +16,13 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "better-sqlite3": "^11.8.1",
+    "@libsql/client": "^0.15.15",
     "nuxt": "^3.17.4"
+  },
+  "devDependencies": {
+    "better-sqlite3": "^11.8.1"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

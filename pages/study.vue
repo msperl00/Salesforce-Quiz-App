@@ -80,9 +80,9 @@ function previousQuestion() {
 
     <section v-if="currentQuestion" class="study-card panel">
       <img
-        v-if="currentQuestion.imageDataUrl"
+        v-if="currentQuestion.imageUrl"
         class="question-image"
-        :src="currentQuestion.imageDataUrl"
+        :src="currentQuestion.imageUrl"
         alt="Imagen de apoyo para la pregunta"
       >
 

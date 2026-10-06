@@ -6,7 +6,8 @@ App web simple para estudiar preguntas de certificaciones de Salesforce con una 
 
 - Nuxt 3
 - API routes de Nitro dentro del mismo proyecto
-- SQLite local con `better-sqlite3`
+- SQLite local o Turso remoto con `@libsql/client`
+- Cuentas propias con correo y contraseña, sesiones y acceso por invitación
 
 ## Requisito práctico de Node
 
@@ -31,7 +32,9 @@ App web simple para estudiar preguntas de certificaciones de Salesforce con una 
 - `pages/`: interfaz web
 - `components/`: formulario y listado
 - `server/api/`: endpoints internos
-- `server/utils/questions.ts`: acceso a SQLite, esquema y lógica de datos
+- `server/utils/questions.ts`: lógica de preguntas y exámenes
+- `server/database/`: esquema y hash de contraseñas
+- `server/middleware/auth.ts`: protección de páginas y API
 - `types/quiz.ts`: contratos compartidos
 - `data/`: base de datos local
 
@@ -103,6 +106,21 @@ Formato esperado:
 }
 ```
 
-## Siguiente paso natural para despliegue
+## Vercel y Turso
 
-Cuando quieras subirla fuera, esta misma app puede desplegarse en un servidor Node pequeño o en un VPS con persistencia de disco. Si más adelante necesitas multiusuario o base de datos remota, la lógica ya está aislada detrás de `server/api/` y `server/utils/questions.ts`, así que el cambio quedará acotado.
+1. Crea una base **libSQL** en Turso. Copia su URL `libsql://...` y token en `.env`, en `NUXT_TURSO_DATABASE_URL` y `NUXT_TURSO_AUTH_TOKEN`.
+2. Genera una clave de sesión con `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Guárdala en `.env` como `NUXT_SESSION_PASSWORD` y configura `NUXT_AUTH_MODE=accounts`.
+3. Si quieres llevar las preguntas locales a Turso, ejecuta `npm run db:migrate`. Solo admite una base de destino vacía; conserva exámenes, respuestas, etiquetas e imágenes. Haz antes una copia de seguridad de tu SQLite con la app detenida. El esquema local debe estar actualizado por esta app.
+4. Añade `QUIZ_ADMIN_EMAIL` y `QUIZ_ADMIN_PASSWORD` a `.env` y ejecuta `npm run user:create`. La contraseña necesita entre 12 y 128 caracteres. Después elimina esas dos variables del archivo.
+5. Importa este repositorio de GitHub en Vercel. Usa Nuxt y Node 22, y añade estas cuatro variables tanto en Production como en Preview: `NUXT_TURSO_DATABASE_URL`, `NUXT_TURSO_AUTH_TOKEN`, `NUXT_SESSION_PASSWORD` y `NUXT_AUTH_MODE=accounts`. Puedes usar una base y una clave distintas para Preview.
+6. Despliega y entra con tu cuenta. Desde **Invitar** puedes generar un enlace para cada amigo. Los enlaces caducan a las 48 horas y solo sirven una vez. Comparte el enlace de forma privada.
+
+Vercel sirve la app y Turso conserva los datos. El despliegue no guarda nada en el disco de Vercel. El esquema se actualiza automáticamente al conectar con la base. La app exige cuentas en Vercel y cuando usa Turso; si falta la configuración, rechaza el acceso.
+
+El administrador gestiona el banco común; los miembros pueden consultar, estudiar, hacer tests y exportar. No hay envío de correos ni recuperación automática de contraseña. Para restablecer tu cuenta administradora, configura de nuevo sus dos variables y ejecuta `npm run user:create -- --reset`; se revocan sus sesiones anteriores.
+
+Las imágenes tienen un máximo de 2 MiB y se descargan por separado. La importación admite hasta 100 preguntas por petición y archivos JSON de hasta 3 MB. Para bancos mayores divide el archivo. La exportación desde la interfaz reúne las imágenes en el navegador; el endpoint directo de exportación tiene un límite de 4 MB.
+
+No subas `.env`, tokens, contraseñas ni `data/` a GitHub. Para pruebas locales sin cuentas deja las variables Turso vacías y `NUXT_AUTH_MODE=local`; así solo se usa SQLite en tu equipo.
+
+La actualización de dependencias mantiene Nuxt 3. La auditoría aún informa de avisos en herramientas transitivas de desarrollo y compilación (devtools, simple-git, glob y certificados de desarrollo). No uses `npm audit fix --force`: propone una versión antigua de Nuxt. Revisa esos avisos al actualizar las herramientas; devtools permanece desactivado y esas herramientas no se incluyen en el servidor compilado.

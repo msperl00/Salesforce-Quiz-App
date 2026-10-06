@@ -6,5 +6,5 @@ import { getExamQuery } from '~/server/utils/exam-query'
 export default defineEventHandler(async (event) => {
   const body = await readBody<QuizExport & { replaceExisting?: boolean }>(event)
 
-  return importQuestions(body, { replaceExisting: Boolean(body.replaceExisting), examId: getExamQuery(event) })
+  return importQuestions(body, { replaceExisting: Boolean(body.replaceExisting), examId: await getExamQuery(event) })
 })

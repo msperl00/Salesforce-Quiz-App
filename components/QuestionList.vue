@@ -3,6 +3,7 @@ import type { Question } from '~/types/quiz'
 
 defineProps<{
   questions: Question[]
+  canEdit?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -25,9 +26,10 @@ const emit = defineEmits<{
     <div v-if="questions.length" class="question-list">
       <article v-for="question in questions" :key="question.id" class="question-card">
         <img
-          v-if="question.imageDataUrl"
+          v-if="question.imageUrl"
           class="question-image compact"
-          :src="question.imageDataUrl"
+          :src="question.imageUrl"
+          loading="lazy"
           alt="Imagen de apoyo para la pregunta"
         >
 
@@ -39,7 +41,7 @@ const emit = defineEmits<{
             </p>
           </div>
 
-          <div class="inline-actions">
+          <div v-if="canEdit" class="inline-actions">
             <button class="btn small ghost" type="button" @click="emit('edit', question)">Editar</button>
             <button class="btn small danger" type="button" @click="emit('remove', question)">Borrar</button>
           </div>

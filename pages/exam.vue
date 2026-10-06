@@ -124,9 +124,9 @@ const score = computed(() => {
 
     <section v-if="started && currentQuestion" class="panel" style="padding: 1.25rem;">
       <img
-        v-if="currentQuestion.imageDataUrl"
+        v-if="currentQuestion.imageUrl"
         class="question-image"
-        :src="currentQuestion.imageDataUrl"
+        :src="currentQuestion.imageUrl"
         alt="Imagen de apoyo para la pregunta"
       >
 
@@ -206,9 +206,9 @@ const score = computed(() => {
           class="result-card"
         >
           <img
-            v-if="question.imageDataUrl"
+            v-if="question.imageUrl"
             class="question-image compact"
-            :src="question.imageDataUrl"
+            :src="question.imageUrl"
             alt="Imagen de apoyo para la pregunta"
           >
           <div class="section-title">

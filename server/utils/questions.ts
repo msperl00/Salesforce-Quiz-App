@@ -1,514 +1,185 @@
-import Database from 'better-sqlite3'
-import { mkdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { createError } from 'h3'
-import { useRuntimeConfig } from '#imports'
-import type { AnswerInput, Exam, Question, QuestionPayload, QuizExport, Tag } from '~/types/quiz'
+import type { Exam, Question, QuestionPayload, QuizExport } from '~/types/quiz'
+import { getDb, query, transaction, type Database } from './database'
+import type { InStatement } from '@libsql/client'
 
-type QuestionRow = {
-  id: number
-  exam_id: number
-  prompt: string
-  image_data_url: string | null
-  explanation: string | null
-  note: string | null
-  created_at: string
-  updated_at: string
-}
-
-type AnswerRow = {
-  id: number
-  question_id: number
-  text: string
-  is_correct: number
-  position: number
-}
-
-type TagRow = {
-  id: number
-  name: string
-}
-
-let db: Database.Database | null = null
-
-function nowIso() {
-  return new Date().toISOString()
-}
-
-function normalizePayload(payload: QuestionPayload): QuestionPayload {
-  const prompt = payload.prompt?.trim()
-  const answers = (payload.answers || [])
-    .map(answer => ({
-      id: answer.id,
-      text: answer.text?.trim(),
-      isCorrect: Boolean(answer.isCorrect)
-    }))
-    .filter(answer => answer.text)
-
-  const tags = [...new Set((payload.tags || []).map(tag => tag.trim()).filter(Boolean))]
-  const imageDataUrl = payload.imageDataUrl?.trim() || ''
-
-  if (!prompt) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'La pregunta no puede estar vacia.'
-    })
+function normalize(payload: QuestionPayload) {
+  if (!payload || typeof payload.prompt !== 'string' || !payload.prompt.trim()) {
+    throw createError({ statusCode: 400, statusMessage: 'La pregunta no puede estar vacia.' })
   }
-
-  if (answers.length < 2) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Cada pregunta necesita al menos dos respuestas.'
-    })
+  const answers = (Array.isArray(payload.answers) ? payload.answers : [])
+    .filter(a => a && typeof a === 'object')
+    .map(a => ({ text: typeof a.text === 'string' ? a.text.trim() : '', isCorrect: a.isCorrect === true })).filter(a => a.text)
+  if (answers.length < 2 || !answers.some(a => a.isCorrect)) {
+    throw createError({ statusCode: 400, statusMessage: 'Incluye dos respuestas y marca al menos una correcta.' })
   }
-
-  if (!answers.some(answer => answer.isCorrect)) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Marca al menos una respuesta correcta.'
-    })
+  const imageDataUrl = typeof payload.imageDataUrl === 'string' ? payload.imageDataUrl.trim() : ''
+  if (imageDataUrl && (!/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/.test(imageDataUrl)
+    || Buffer.from(imageDataUrl.split(',')[1], 'base64').length > 2 * 1024 * 1024)) {
+    throw createError({ statusCode: 400, statusMessage: 'Usa PNG, JPG, WEBP o GIF de hasta 2 MB.' })
   }
-
-  if (imageDataUrl && !/^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=\s]+$/i.test(imageDataUrl)) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'La imagen debe ser PNG, JPG, WEBP o GIF.'
-    })
-  }
-
-  if (imageDataUrl.length > 6_000_000) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'La imagen es demasiado grande. El máximo es 4 MB.'
-    })
-  }
-
   return {
-    examId: payload.examId,
-    prompt,
-    imageDataUrl,
-    explanation: payload.explanation?.trim() || '',
-    note: payload.note?.trim() || '',
-    answers,
-    tags
+    ...payload, prompt: payload.prompt.trim(), answers, imageDataUrl,
+    explanation: typeof payload.explanation === 'string' ? payload.explanation.trim() : '',
+    note: typeof payload.note === 'string' ? payload.note.trim() : '',
+    tags: [...new Set((Array.isArray(payload.tags) ? payload.tags : []).filter(t => typeof t === 'string').map(t => t.trim()).filter(Boolean))]
   }
 }
 
-function getDatabasePath() {
-  const config = useRuntimeConfig()
-
-  return resolve(process.cwd(), config.quizDatabasePath)
-}
-
-function seedDatabase(database: Database.Database) {
-  const countRow = database.prepare('SELECT COUNT(*) as count FROM questions').get() as { count: number }
-
-  if (countRow.count > 0) {
-    return
-  }
-
-  createQuestion(database, {
-    prompt: 'Which Salesforce API is best suited for large data exports in batches?',
-    explanation: 'Bulk API is designed for asynchronous processing of large volumes of records.',
-    note: 'Piensa en operaciones masivas y asíncronas.',
-    tags: ['Integration', 'APIs'],
-    answers: [
-      { text: 'REST API', isCorrect: false },
-      { text: 'Bulk API', isCorrect: true },
-      { text: 'Metadata API', isCorrect: false },
-      { text: 'Streaming API', isCorrect: false }
-    ]
-  })
-
-  createQuestion(database, {
-    prompt: 'Which statement about validation rules is correct?',
-    explanation: 'Validation rules prevent records from being saved when the formula evaluates to true.',
-    note: 'La regla se dispara cuando la condición da verdadero.',
-    tags: ['Automation', 'Platform'],
-    answers: [
-      { text: 'They run only after a record is deleted.', isCorrect: false },
-      { text: 'They can block a save when a formula returns true.', isCorrect: true },
-      { text: 'They can update related records automatically.', isCorrect: false },
-      { text: 'They replace assignment rules.', isCorrect: false }
-    ]
-  })
-}
-
-function initDatabase(database: Database.Database) {
-  database.pragma('journal_mode = WAL')
-  database.pragma('foreign_keys = ON')
-
-  const isNewDatabase = !database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'questions'").get()
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS exams (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL COLLATE NOCASE UNIQUE
-    );
-    CREATE TABLE IF NOT EXISTS questions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      prompt TEXT NOT NULL,
-      image_data_url TEXT DEFAULT '',
-      explanation TEXT DEFAULT '',
-      note TEXT DEFAULT '',
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS answers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      question_id INTEGER NOT NULL,
-      text TEXT NOT NULL,
-      is_correct INTEGER NOT NULL DEFAULT 0,
-      position INTEGER NOT NULL DEFAULT 0,
-      FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS tags (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE
-    );
-
-    CREATE TABLE IF NOT EXISTS question_tags (
-      question_id INTEGER NOT NULL,
-      tag_id INTEGER NOT NULL,
-      PRIMARY KEY (question_id, tag_id),
-      FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
-      FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-    );
-  `)
-
-  const questionColumns = database.pragma('table_info(questions)') as Array<{ name: string }>
-  if (!questionColumns.some(column => column.name === 'image_data_url')) {
-    database.exec("ALTER TABLE questions ADD COLUMN image_data_url TEXT DEFAULT ''")
-  }
-
-  database.transaction(() => {
-    if (!questionColumns.some(column => column.name === 'exam_id')) {
-      database.prepare('INSERT INTO exams (name) VALUES (?)').run('General')
-      const general = database.prepare('SELECT id FROM exams WHERE name = ?').get('General') as { id: number }
-      database.exec('ALTER TABLE questions ADD COLUMN exam_id INTEGER REFERENCES exams(id)')
-      database.prepare('UPDATE questions SET exam_id = ?').run(general.id)
-    }
-    database.exec('CREATE INDEX IF NOT EXISTS questions_exam_id ON questions(exam_id)')
-  })()
-
-  if (isNewDatabase) seedDatabase(database)
-}
-
-export function getDb() {
-  if (!db) {
-    const databasePath = getDatabasePath()
-    mkdirSync(dirname(databasePath), { recursive: true })
-    db = new Database(databasePath)
-    initDatabase(db)
-  }
-
-  return db
-}
-
-function hydrateQuestion(database: Database.Database, row: QuestionRow): Question {
-  const answers = database.prepare(`
-    SELECT id, question_id, text, is_correct, position
-    FROM answers
-    WHERE question_id = ?
-    ORDER BY position ASC, id ASC
-  `).all(row.id) as AnswerRow[]
-
-  const tags = database.prepare(`
-    SELECT tags.id, tags.name
-    FROM tags
-    INNER JOIN question_tags ON question_tags.tag_id = tags.id
-    WHERE question_tags.question_id = ?
-    ORDER BY tags.name COLLATE NOCASE ASC
-  `).all(row.id) as TagRow[]
-
-  return {
-    id: row.id,
-    examId: row.exam_id,
-    prompt: row.prompt,
-    imageDataUrl: row.image_data_url || '',
-    explanation: row.explanation || '',
-    note: row.note || '',
-    answers: answers.map(answer => ({
-      id: answer.id,
-      text: answer.text,
-      isCorrect: Boolean(answer.is_correct)
-    })),
-    tags: tags.map(tag => ({ id: tag.id, name: tag.name })),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
-  }
-}
-
-function syncTags(database: Database.Database, questionId: number, tagNames: string[]) {
-  database.prepare('DELETE FROM question_tags WHERE question_id = ?').run(questionId)
-
-  const insertTag = database.prepare('INSERT INTO tags (name) VALUES (?) ON CONFLICT(name) DO NOTHING')
-  const selectTag = database.prepare('SELECT id, name FROM tags WHERE name = ?') as Database.Statement<[string], TagRow>
-  const linkTag = database.prepare('INSERT OR IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)')
-
-  for (const tagName of tagNames) {
-    insertTag.run(tagName)
-    const tag = selectTag.get(tagName)
-
-    if (tag) {
-      linkTag.run(questionId, tag.id)
-    }
-  }
-}
-
-function replaceAnswers(database: Database.Database, questionId: number, answers: AnswerInput[]) {
-  database.prepare('DELETE FROM answers WHERE question_id = ?').run(questionId)
-
-  const insertAnswer = database.prepare(`
-    INSERT INTO answers (question_id, text, is_correct, position)
-    VALUES (?, ?, ?, ?)
-  `)
-
-  answers.forEach((answer, index) => {
-    insertAnswer.run(questionId, answer.text, answer.isCorrect ? 1 : 0, index)
-  })
-}
-
-export function listQuestions(filters?: { search?: string, tag?: string, examId?: number }) {
-  const database = getDb()
-
-  const conditions: string[] = []
-  const params: Array<string | number> = []
-  if (filters?.examId !== undefined) {
-    getExam(filters.examId)
-    conditions.push('questions.exam_id = ?')
-    params.push(filters.examId)
-  }
-
-  if (filters?.search) {
-    conditions.push('(questions.prompt LIKE ? OR questions.explanation LIKE ? OR questions.note LIKE ?)')
-    const query = `%${filters.search.trim()}%`
-    params.push(query, query, query)
-  }
-
-  if (filters?.tag) {
-    conditions.push(`
-      EXISTS (
-        SELECT 1
-        FROM question_tags
-        INNER JOIN tags ON tags.id = question_tags.tag_id
-        WHERE question_tags.question_id = questions.id
-          AND tags.name = ?
-      )
-    `)
-    params.push(filters.tag.trim())
-  }
-
-  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
-
-  const rows = database.prepare(`
-    SELECT questions.*
-    FROM questions
-    ${whereClause}
-    ORDER BY questions.updated_at DESC
-  `).all(...params) as QuestionRow[]
-
-  return rows.map(row => hydrateQuestion(database, row))
-}
-
-export function listTags(examId: number): Tag[] {
-  const database = getDb()
-  getExam(examId)
-
-  const rows = database.prepare(`
-    SELECT tags.id, tags.name
-    FROM tags
-    WHERE EXISTS (
-      SELECT 1 FROM question_tags
-      INNER JOIN questions ON questions.id = question_tags.question_id
-      WHERE question_tags.tag_id = tags.id AND questions.exam_id = ?
-    )
-    ORDER BY tags.name COLLATE NOCASE ASC
-  `).all(examId) as TagRow[]
-
-  return rows
-}
-
-export function getQuestionById(id: number) {
-  const database = getDb()
-  const row = database.prepare(`
-    SELECT *
-    FROM questions
-    WHERE id = ?
-  `).get(id) as QuestionRow | undefined
-
-  if (!row) {
-    throw createError({
-      statusCode: 404,
-      statusMessage: 'Pregunta no encontrada.'
-    })
-  }
-
-  return hydrateQuestion(database, row)
-}
-
-function createQuestion(database: Database.Database, payload: QuestionPayload) {
-  const normalized = normalizePayload(payload)
-  const examId = normalized.examId ?? (database.prepare('SELECT id FROM exams ORDER BY id LIMIT 1').get() as { id: number }).id
-  getExam(examId)
-  const timestamp = nowIso()
-
-  const result = database.prepare(`
-    INSERT INTO questions (prompt, image_data_url, explanation, note, created_at, updated_at, exam_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(normalized.prompt, normalized.imageDataUrl || '', normalized.explanation, normalized.note, timestamp, timestamp, examId)
-
-  const questionId = Number(result.lastInsertRowid)
-  replaceAnswers(database, questionId, normalized.answers)
-  syncTags(database, questionId, normalized.tags)
-
-  return getQuestionById(questionId)
-}
-
-export function createQuestionRecord(payload: QuestionPayload) {
-  getExam(payload.examId as number)
-  const database = getDb()
-  return database.transaction(() => createQuestion(database, payload))()
-}
-
-export function updateQuestionRecord(id: number, payload: QuestionPayload) {
-  const database = getDb()
-  const normalized = normalizePayload(payload)
-
-  const exists = database.prepare('SELECT id, exam_id FROM questions WHERE id = ?').get(id) as { id: number, exam_id: number } | undefined
-
-  if (!exists) {
-    throw createError({
-      statusCode: 404,
-      statusMessage: 'Pregunta no encontrada.'
-    })
-  }
-
-  const examId = normalized.examId ?? exists.exam_id
-  getExam(examId)
-  database.transaction(() => {
-    database.prepare(`
-    UPDATE questions
-    SET prompt = ?, image_data_url = ?, explanation = ?, note = ?, updated_at = ?, exam_id = ?
-    WHERE id = ?
-    `).run(normalized.prompt, normalized.imageDataUrl || '', normalized.explanation, normalized.note, nowIso(), examId, id)
-
-    replaceAnswers(database, id, normalized.answers)
-    syncTags(database, id, normalized.tags)
-  })()
-
-  return getQuestionById(id)
-}
-
-export function deleteQuestionRecord(id: number) {
-  const database = getDb()
-  const result = database.prepare('DELETE FROM questions WHERE id = ?').run(id)
-
-  if (!result.changes) {
-    throw createError({
-      statusCode: 404,
-      statusMessage: 'Pregunta no encontrada.'
-    })
-  }
-
-  database.prepare(`
-    DELETE FROM tags
-    WHERE id IN (
-      SELECT tags.id
-      FROM tags
-      LEFT JOIN question_tags ON question_tags.tag_id = tags.id
-      GROUP BY tags.id
-      HAVING COUNT(question_tags.question_id) = 0
-    )
-  `).run()
-
-  return { success: true }
-}
-
-export function exportQuestions(examId: number): QuizExport {
-  const exam = getExam(examId)
-  const questions = listQuestions({ examId }).map(question => ({
-    prompt: question.prompt,
-    imageDataUrl: question.imageDataUrl,
-    explanation: question.explanation,
-    note: question.note,
-    tags: question.tags.map(tag => tag.name),
-    answers: question.answers.map(answer => ({
-      text: answer.text,
-      isCorrect: answer.isCorrect
-    }))
-  }))
-
-  return {
-    version: 1,
-    examName: exam.name,
-    exportedAt: nowIso(),
-    questions
-  }
-}
-
-export function importQuestions(data: QuizExport | { questions?: QuestionPayload[] }, options: { replaceExisting?: boolean, examId: number }) {
-  const database = getDb()
-  getExam(options.examId)
-  const questions = Array.isArray(data?.questions) ? data.questions : []
-
-  if (!questions.length) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'El JSON no contiene preguntas.'
-    })
-  }
-
-  const transaction = database.transaction(() => {
-    if (options?.replaceExisting) {
-      database.prepare('DELETE FROM questions WHERE exam_id = ?').run(options.examId)
-    }
-
-    for (const question of questions) {
-      createQuestion(database, { ...question, examId: options.examId })
-    }
-  })
-
-  transaction()
-
-  return {
-    imported: questions.length,
-    total: listQuestions({ examId: options.examId }).length
-  }
-}
-
-export function getExam(id: number) {
-  if (!Number.isSafeInteger(id) || id <= 0) {
-    throw createError({ statusCode: 400, statusMessage: 'Selecciona un examen valido.' })
-  }
-  const exam = getDb().prepare('SELECT id, name FROM exams WHERE id = ?').get(id) as { id: number, name: string } | undefined
+async function requireExam(db: Database, id: number) {
+  if (!Number.isSafeInteger(id) || id <= 0) throw createError({ statusCode: 400, statusMessage: 'Selecciona un examen valido.' })
+  const exam = (await query(db, 'SELECT id, name FROM exams WHERE id = ?', [id]))[0]
   if (!exam) throw createError({ statusCode: 404, statusMessage: 'Examen no encontrado.' })
-  return exam
+  return { id: Number(exam.id), name: String(exam.name) }
 }
-
-export function listExams(): Exam[] {
-  return getDb().prepare(`
-    SELECT exams.id, exams.name, COUNT(questions.id) AS questionCount
-    FROM exams LEFT JOIN questions ON questions.exam_id = exams.id
-    GROUP BY exams.id ORDER BY exams.name COLLATE NOCASE
-  `).all() as Exam[]
+export async function getExam(id: number) { return requireExam(await getDb(), id) }
+export async function listExams(): Promise<Exam[]> {
+  return (await query(await getDb(), `SELECT exams.id, exams.name, COUNT(questions.id) AS count
+    FROM exams LEFT JOIN questions ON questions.exam_id = exams.id GROUP BY exams.id ORDER BY exams.name COLLATE NOCASE`))
+    .map(row => ({ id: Number(row.id), name: String(row.name), questionCount: Number(row.count) }))
 }
-
-export function saveExam(name: unknown, id?: number) {
+export async function saveExam(name: unknown, id?: number) {
   if (typeof name !== 'string' || !name.trim() || name.trim().length > 120) {
     throw createError({ statusCode: 400, statusMessage: 'El nombre debe tener entre 1 y 120 caracteres.' })
   }
-  const database = getDb()
-  if (id !== undefined) getExam(id)
-  const duplicate = database.prepare('SELECT id FROM exams WHERE name = ?').get(name.trim()) as { id: number } | undefined
-  if (duplicate && duplicate.id !== id) {
-    throw createError({ statusCode: 409, statusMessage: 'Ya existe un examen con ese nombre.' })
+  const cleanName = name.trim()
+  return transaction(async db => {
+    if (id !== undefined) await requireExam(db, id)
+    const duplicate = (await query(db, 'SELECT id FROM exams WHERE name = ?', [cleanName]))[0]
+    if (duplicate && Number(duplicate.id) !== id) throw createError({ statusCode: 409, statusMessage: 'Ya existe un examen con ese nombre.' })
+    if (id !== undefined) await query(db, 'UPDATE exams SET name = ? WHERE id = ?', [cleanName, id])
+    else id = Number((await db.execute({ sql: 'INSERT INTO exams (name) VALUES (?)', args: [cleanName] })).lastInsertRowid)
+    return { id, name: cleanName }
+  })
+}
+
+async function hydrate(db: Database, row: any, includeImage = false): Promise<Question> {
+  const answers = await query(db, 'SELECT id, text, is_correct FROM answers WHERE question_id = ? ORDER BY position, id', [row.id])
+  const tags = await query(db, `SELECT tags.id, tags.name FROM tags JOIN question_tags ON question_tags.tag_id = tags.id
+    WHERE question_tags.question_id = ? ORDER BY tags.name COLLATE NOCASE`, [row.id])
+  return {
+    id: Number(row.id), examId: Number(row.exam_id), prompt: String(row.prompt),
+    imageDataUrl: includeImage ? String(row.image_data_url || '') : '',
+    imageUrl: row.has_image || row.image_data_url ? `/api/questions/${row.id}/image?v=${encodeURIComponent(row.updated_at)}` : '',
+    explanation: String(row.explanation || ''), note: String(row.note || ''),
+    createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+    answers: answers.map(a => ({ id: Number(a.id), text: String(a.text), isCorrect: Boolean(a.is_correct) })),
+    tags: tags.map(t => ({ id: Number(t.id), name: String(t.name) }))
   }
+}
+export async function listQuestions(filters: { search?: string, tag?: string, examId: number }) {
+  const db = await getDb()
+  await requireExam(db, filters.examId)
+  const conditions = ['exam_id = ?']
+  const args: (string | number)[] = [filters.examId]
+  if (filters.search) {
+    conditions.push('(prompt LIKE ? OR explanation LIKE ? OR note LIKE ?)')
+    args.push(...Array(3).fill(`%${filters.search.trim()}%`))
+  }
+  if (filters.tag) {
+    conditions.push(`EXISTS (SELECT 1 FROM question_tags JOIN tags ON tags.id = question_tags.tag_id
+      WHERE question_tags.question_id = questions.id AND tags.name = ?)`)
+    args.push(filters.tag.trim())
+  }
+  const rows = await query(db, `SELECT id, exam_id, prompt, explanation, note, created_at, updated_at,
+    length(image_data_url) > 0 AS has_image FROM questions WHERE ${conditions.join(' AND ')} ORDER BY updated_at DESC`, args)
+  return Promise.all(rows.map(row => hydrate(db, row)))
+}
+export async function listTags(examId: number) {
+  const db = await getDb()
+  await requireExam(db, examId)
+  return (await query(db, `SELECT DISTINCT tags.id, tags.name FROM tags
+    JOIN question_tags ON question_tags.tag_id = tags.id JOIN questions ON questions.id = question_tags.question_id
+    WHERE questions.exam_id = ? ORDER BY tags.name COLLATE NOCASE`, [examId]))
+    .map(row => ({ id: Number(row.id), name: String(row.name) }))
+}
+export async function getQuestionById(id: number) {
+  const db = await getDb()
+  const row = (await query(db, 'SELECT * FROM questions WHERE id = ?', [id]))[0]
+  if (!row) throw createError({ statusCode: 404, statusMessage: 'Pregunta no encontrada.' })
+  return hydrate(db, row, true)
+}
+async function writeQuestion(db: Database, payload: QuestionPayload, id?: number) {
+  const value = normalize(payload)
+  let examId = value.examId
   if (id !== undefined) {
-    database.prepare('UPDATE exams SET name = ? WHERE id = ?').run(name.trim(), id)
-  } else {
-    id = Number(database.prepare('INSERT INTO exams (name) VALUES (?)').run(name.trim()).lastInsertRowid)
+    const old = (await query(db, 'SELECT exam_id FROM questions WHERE id = ?', [id]))[0]
+    if (!old) throw createError({ statusCode: 404, statusMessage: 'Pregunta no encontrada.' })
+    examId ??= Number(old.exam_id)
   }
-  return getExam(id)
+  await requireExam(db, examId as number)
+  const now = new Date().toISOString()
+  const args = [value.prompt, value.imageDataUrl, value.explanation, value.note, now, examId!]
+  if (id !== undefined) {
+    await query(db, 'UPDATE questions SET prompt = ?, image_data_url = ?, explanation = ?, note = ?, updated_at = ?, exam_id = ? WHERE id = ?', [...args, id])
+    await query(db, 'DELETE FROM answers WHERE question_id = ?', [id])
+    await query(db, 'DELETE FROM question_tags WHERE question_id = ?', [id])
+  } else {
+    id = Number((await db.execute({ sql: `INSERT INTO questions (prompt, image_data_url, explanation, note, updated_at, exam_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`, args: [...args, now] })).lastInsertRowid)
+  }
+  for (const [position, answer] of value.answers.entries()) {
+    await query(db, 'INSERT INTO answers (question_id, text, is_correct, position) VALUES (?, ?, ?, ?)', [id, answer.text, answer.isCorrect ? 1 : 0, position])
+  }
+  for (const name of value.tags) {
+    await query(db, 'INSERT OR IGNORE INTO tags (name) VALUES (?)', [name])
+    await query(db, 'INSERT INTO question_tags (question_id, tag_id) SELECT ?, id FROM tags WHERE name = ?', [id, name])
+  }
+  return id
+}
+export async function createQuestionRecord(payload: QuestionPayload) {
+  return getQuestionById(await transaction(db => writeQuestion(db, payload)))
+}
+export async function updateQuestionRecord(id: number, payload: QuestionPayload) {
+  return getQuestionById(await transaction(db => writeQuestion(db, payload, id)))
+}
+export async function deleteQuestionRecord(id: number) {
+  return transaction(async db => {
+    await query(db, 'DELETE FROM question_tags WHERE question_id = ?', [id])
+    await query(db, 'DELETE FROM answers WHERE question_id = ?', [id])
+    const result = await db.execute({ sql: 'DELETE FROM questions WHERE id = ?', args: [id] })
+    if (!result.rowsAffected) throw createError({ statusCode: 404, statusMessage: 'Pregunta no encontrada.' })
+    return { success: true }
+  })
+}
+export async function exportQuestions(examId: number): Promise<QuizExport> {
+  const exam = await getExam(examId)
+  const db = await getDb()
+  const rows = await query(db, 'SELECT * FROM questions WHERE exam_id = ?', [examId])
+  const questions = await Promise.all(rows.map(row => hydrate(db, row, true)))
+  return { version: 1, examName: exam.name, exportedAt: new Date().toISOString(), questions: questions.map(q => ({
+    prompt: q.prompt, imageDataUrl: q.imageDataUrl, explanation: q.explanation, note: q.note,
+    tags: q.tags.map(t => t.name), answers: q.answers.map(a => ({ text: a.text, isCorrect: a.isCorrect }))
+  })) }
+}
+export async function importQuestions(data: QuizExport, options: { examId: number, replaceExisting?: boolean }) {
+  if (!Array.isArray(data?.questions) || !data.questions.length || data.questions.length > 100) {
+    throw createError({ statusCode: 400, statusMessage: 'Importa entre 1 y 100 preguntas por archivo.' })
+  }
+  const db = await getDb()
+  await requireExam(db, options.examId)
+  const values = data.questions.map(normalize)
+  const statements: InStatement[] = []
+  if (options.replaceExisting) {
+    for (const table of ['question_tags', 'answers']) statements.push({
+      sql: `DELETE FROM ${table} WHERE question_id IN (SELECT id FROM questions WHERE exam_id = ?)`, args: [options.examId]
+    })
+    statements.push({ sql: 'DELETE FROM questions WHERE exam_id = ?', args: [options.examId] })
+  }
+  // One atomic batch avoids the remote interactive transaction timeout during imports.
+  for (const value of values) {
+    const now = new Date().toISOString()
+    statements.push({ sql: `INSERT INTO questions (prompt, image_data_url, explanation, note, updated_at, exam_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`, args: [value.prompt, value.imageDataUrl, value.explanation, value.note, now, options.examId, now] })
+    for (const [position, answer] of value.answers.entries()) statements.push({
+      sql: 'INSERT INTO answers (question_id, text, is_correct, position) SELECT max(id), ?, ?, ? FROM questions',
+      args: [answer.text, answer.isCorrect ? 1 : 0, position]
+    })
+    for (const name of value.tags) {
+      statements.push({ sql: 'INSERT OR IGNORE INTO tags (name) VALUES (?)', args: [name] })
+      statements.push({ sql: 'INSERT INTO question_tags (question_id, tag_id) SELECT (SELECT max(id) FROM questions), id FROM tags WHERE name = ?', args: [name] })
+    }
+  }
+  await db.batch(statements, 'write')
+  const total = (await query(db, 'SELECT count(*) AS count FROM questions WHERE exam_id = ?', [options.examId]))[0]
+  return { imported: values.length, total: Number(total.count) }
 }

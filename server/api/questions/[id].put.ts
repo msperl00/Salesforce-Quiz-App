@@ -7,6 +7,6 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<QuestionPayload>(event)
 
   return {
-    question: updateQuestionRecord(id, body)
+    question: await updateQuestionRecord(id, body)
   }
 })

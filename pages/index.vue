@@ -2,6 +2,7 @@
 import type { Question, QuestionPayload, QuizExport, Tag } from '~/types/quiz'
 
 const api = useQuizApi()
+const { data: account } = await useAccount()
 const { data: examsData } = await useFetch('/api/exams')
 
 const selectedTag = ref('')
@@ -80,8 +81,34 @@ async function removeQuestion(question: Question) {
   await loadData()
 }
 
-function downloadExport() {
-  window.open(`/api/export/json?examId=${api.examId}`, '_blank')
+async function editQuestion(question: Question) {
+  try {
+    editingQuestion.value = (await $fetch<{ question: Question }>(`/api/questions/${question.id}`)).question
+  } catch {
+    message.value = { type: 'warning', text: 'No se pudo cargar la pregunta.' }
+  }
+}
+
+async function downloadExport() {
+  try {
+    const all = await api.listQuestions()
+    const exported: QuestionPayload[] = []
+    for (const item of all) {
+      const q = (await $fetch<{ question: Question }>(`/api/questions/${item.id}`)).question
+      exported.push({ prompt: q.prompt, imageDataUrl: q.imageDataUrl, explanation: q.explanation,
+        note: q.note, tags: q.tags.map(t => t.name), answers: q.answers.map(a => ({ text: a.text, isCorrect: a.isCorrect })) })
+    }
+    const blob = new Blob([JSON.stringify({ version: 1, exportedAt: new Date().toISOString(),
+      examName: examsData.value?.exams.find(e => e.id === api.examId)?.name, questions: exported }, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `examen-${api.examId}.json`
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch {
+    message.value = { type: 'warning', text: 'No se pudo exportar el examen.' }
+  }
 }
 
 async function importJson(replaceExisting = false) {
@@ -94,6 +121,7 @@ async function importJson(replaceExisting = false) {
 
   try {
     const raw = await importFile.value.text()
+    if (new Blob([raw]).size > 3_000_000) throw new Error('Importa archivos de hasta 3 MB y 100 preguntas.')
     const parsed = JSON.parse(raw) as QuizExport
 
     const result = await api.importJson({
@@ -178,7 +206,7 @@ const stats = computed(() => {
 
       <div class="toolbar" style="margin-top: 1rem;">
         <button class="btn primary" type="button" @click="downloadExport">Exportar JSON</button>
-        <div class="pill-input">
+        <div v-if="account?.user?.role === 'admin'" class="pill-input">
           <input type="file" accept="application/json" @change="importFile = ($event.target as HTMLInputElement).files?.[0] || null">
           <button class="btn ghost" type="button" @click="importJson(false)">Importar sumando</button>
           <button class="btn danger" type="button" @click="importJson(true)">Importar reemplazando</button>
@@ -186,8 +214,9 @@ const stats = computed(() => {
       </div>
     </section>
 
-    <div class="page-grid">
+    <div :class="account?.user?.role === 'admin' ? 'page-grid' : 'stack'">
       <QuestionForm
+        v-if="account?.user?.role === 'admin'"
         :key="formVersion"
         :model-value="editingQuestion"
         :saving="saving"
@@ -197,8 +226,9 @@ const stats = computed(() => {
       />
 
       <QuestionList
+        :can-edit="account?.user?.role === 'admin'"
         :questions="questions"
-        @edit="editingQuestion = $event"
+        @edit="editQuestion"
         @remove="removeQuestion"
       />
     </div>

@@ -12,7 +12,7 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-const MAX_IMAGE_SIZE = 4 * 1024 * 1024
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024
 const imageInput = ref<HTMLInputElement | null>(null)
 const imageError = ref('')
 
@@ -100,7 +100,7 @@ async function selectImage(event: Event) {
   }
 
   if (file.size > MAX_IMAGE_SIZE) {
-    imageError.value = 'La imagen no puede superar los 4 MB.'
+    imageError.value = 'La imagen no puede superar los 2 MB.'
     input.value = ''
     return
   }
@@ -173,7 +173,7 @@ function onSubmit() {
             accept="image/png,image/jpeg,image/webp,image/gif"
             @change="selectImage"
           >
-          <small class="muted">PNG, JPG, WEBP o GIF. Máximo 4 MB.</small>
+          <small class="muted">PNG, JPG, WEBP o GIF. Máximo 2 MB.</small>
           <p v-if="imageError" class="form-error">{{ imageError }}</p>
 
           <div v-if="form.imageDataUrl" class="image-preview">
