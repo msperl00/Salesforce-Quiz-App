@@ -14,15 +14,15 @@ const answersByQuestion = ref<Record<number, number[]>>({})
 const examQuestions = ref<Question[]>([])
 
 const currentQuestion = computed(() => examQuestions.value[currentIndex.value] || null)
+const pool = computed(() => selectedTag.value
+  ? allQuestions.value.filter(question => question.tags.some(tag => tag.name === selectedTag.value))
+  : allQuestions.value)
 
 function startExam() {
-  const pool = selectedTag.value
-    ? allQuestions.value.filter(question => question.tags.some(tag => tag.name === selectedTag.value))
-    : allQuestions.value
-
-  examQuestions.value = [...pool]
+  if (!pool.value.length || !Number.isInteger(desiredCount.value) || desiredCount.value < 1) return
+  examQuestions.value = [...pool.value]
     .sort(() => Math.random() - 0.5)
-    .slice(0, Math.max(1, Math.min(desiredCount.value, pool.length)))
+    .slice(0, Math.min(desiredCount.value, pool.value.length))
 
   answersByQuestion.value = {}
   currentIndex.value = 0
@@ -74,10 +74,11 @@ const score = computed(() => {
 
 <template>
   <div class="stack">
+    <ExamHeading :exam-id="api.examId" />
     <section class="panel" style="padding: 1.25rem;">
       <div class="section-title">
         <div>
-          <h2>Modo examen</h2>
+          <h2>Simulacro</h2>
           <p class="muted">Sesión cerrada con puntuación final y revisión de errores.</p>
         </div>
       </div>
@@ -97,7 +98,7 @@ const score = computed(() => {
             id="count"
             v-model.number="desiredCount"
             min="1"
-            :max="allQuestions.length || 1"
+            :max="pool.length || 1"
             type="number"
             :disabled="started && !submitted"
           >
@@ -105,7 +106,7 @@ const score = computed(() => {
       </div>
 
       <div class="actions" style="margin-top: 1rem;">
-        <button class="btn primary" type="button" @click="startExam">
+        <button class="btn primary" type="button" :disabled="!pool.length || !Number.isInteger(desiredCount) || desiredCount < 1" @click="startExam">
           {{ started ? 'Reiniciar examen' : 'Empezar examen' }}
         </button>
 
@@ -118,9 +119,17 @@ const score = computed(() => {
           Corregir
         </button>
       </div>
+      <p v-if="!pool.length" class="empty-state">No hay preguntas para este examen y filtro. Añádelas desde Preguntas.</p>
     </section>
 
     <section v-if="started && currentQuestion" class="panel" style="padding: 1.25rem;">
+      <img
+        v-if="currentQuestion.imageDataUrl"
+        class="question-image"
+        :src="currentQuestion.imageDataUrl"
+        alt="Imagen de apoyo para la pregunta"
+      >
+
       <div class="section-title">
         <div>
           <p class="muted">Pregunta {{ currentIndex + 1 }} de {{ examQuestions.length }}</p>
@@ -196,6 +205,12 @@ const score = computed(() => {
           :key="question.id"
           class="result-card"
         >
+          <img
+            v-if="question.imageDataUrl"
+            class="question-image compact"
+            :src="question.imageDataUrl"
+            alt="Imagen de apoyo para la pregunta"
+          >
           <div class="section-title">
             <p>{{ question.prompt }}</p>
             <strong>{{ isQuestionCorrect(question) ? 'OK' : 'FAIL' }}</strong>

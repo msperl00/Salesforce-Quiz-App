@@ -3,11 +3,13 @@ import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { createError } from 'h3'
 import { useRuntimeConfig } from '#imports'
-import type { AnswerInput, Question, QuestionPayload, QuizExport, Tag } from '~/types/quiz'
+import type { AnswerInput, Exam, Question, QuestionPayload, QuizExport, Tag } from '~/types/quiz'
 
 type QuestionRow = {
   id: number
+  exam_id: number
   prompt: string
+  image_data_url: string | null
   explanation: string | null
   note: string | null
   created_at: string
@@ -44,6 +46,7 @@ function normalizePayload(payload: QuestionPayload): QuestionPayload {
     .filter(answer => answer.text)
 
   const tags = [...new Set((payload.tags || []).map(tag => tag.trim()).filter(Boolean))]
+  const imageDataUrl = payload.imageDataUrl?.trim() || ''
 
   if (!prompt) {
     throw createError({
@@ -66,8 +69,24 @@ function normalizePayload(payload: QuestionPayload): QuestionPayload {
     })
   }
 
+  if (imageDataUrl && !/^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=\s]+$/i.test(imageDataUrl)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'La imagen debe ser PNG, JPG, WEBP o GIF.'
+    })
+  }
+
+  if (imageDataUrl.length > 6_000_000) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'La imagen es demasiado grande. El máximo es 4 MB.'
+    })
+  }
+
   return {
+    examId: payload.examId,
     prompt,
+    imageDataUrl,
     explanation: payload.explanation?.trim() || '',
     note: payload.note?.trim() || '',
     answers,
@@ -119,10 +138,16 @@ function initDatabase(database: Database.Database) {
   database.pragma('journal_mode = WAL')
   database.pragma('foreign_keys = ON')
 
+  const isNewDatabase = !database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'questions'").get()
   database.exec(`
+    CREATE TABLE IF NOT EXISTS exams (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL COLLATE NOCASE UNIQUE
+    );
     CREATE TABLE IF NOT EXISTS questions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       prompt TEXT NOT NULL,
+      image_data_url TEXT DEFAULT '',
       explanation TEXT DEFAULT '',
       note TEXT DEFAULT '',
       created_at TEXT NOT NULL,
@@ -152,7 +177,22 @@ function initDatabase(database: Database.Database) {
     );
   `)
 
-  seedDatabase(database)
+  const questionColumns = database.pragma('table_info(questions)') as Array<{ name: string }>
+  if (!questionColumns.some(column => column.name === 'image_data_url')) {
+    database.exec("ALTER TABLE questions ADD COLUMN image_data_url TEXT DEFAULT ''")
+  }
+
+  database.transaction(() => {
+    if (!questionColumns.some(column => column.name === 'exam_id')) {
+      database.prepare('INSERT INTO exams (name) VALUES (?)').run('General')
+      const general = database.prepare('SELECT id FROM exams WHERE name = ?').get('General') as { id: number }
+      database.exec('ALTER TABLE questions ADD COLUMN exam_id INTEGER REFERENCES exams(id)')
+      database.prepare('UPDATE questions SET exam_id = ?').run(general.id)
+    }
+    database.exec('CREATE INDEX IF NOT EXISTS questions_exam_id ON questions(exam_id)')
+  })()
+
+  if (isNewDatabase) seedDatabase(database)
 }
 
 export function getDb() {
@@ -184,7 +224,9 @@ function hydrateQuestion(database: Database.Database, row: QuestionRow): Questio
 
   return {
     id: row.id,
+    examId: row.exam_id,
     prompt: row.prompt,
+    imageDataUrl: row.image_data_url || '',
     explanation: row.explanation || '',
     note: row.note || '',
     answers: answers.map(answer => ({
@@ -228,11 +270,16 @@ function replaceAnswers(database: Database.Database, questionId: number, answers
   })
 }
 
-export function listQuestions(filters?: { search?: string, tag?: string }) {
+export function listQuestions(filters?: { search?: string, tag?: string, examId?: number }) {
   const database = getDb()
 
   const conditions: string[] = []
-  const params: string[] = []
+  const params: Array<string | number> = []
+  if (filters?.examId !== undefined) {
+    getExam(filters.examId)
+    conditions.push('questions.exam_id = ?')
+    params.push(filters.examId)
+  }
 
   if (filters?.search) {
     conditions.push('(questions.prompt LIKE ? OR questions.explanation LIKE ? OR questions.note LIKE ?)')
@@ -256,7 +303,7 @@ export function listQuestions(filters?: { search?: string, tag?: string }) {
   const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 
   const rows = database.prepare(`
-    SELECT questions.id, questions.prompt, questions.explanation, questions.note, questions.created_at, questions.updated_at
+    SELECT questions.*
     FROM questions
     ${whereClause}
     ORDER BY questions.updated_at DESC
@@ -265,17 +312,20 @@ export function listQuestions(filters?: { search?: string, tag?: string }) {
   return rows.map(row => hydrateQuestion(database, row))
 }
 
-export function listTags(): Tag[] {
+export function listTags(examId: number): Tag[] {
   const database = getDb()
+  getExam(examId)
 
   const rows = database.prepare(`
     SELECT tags.id, tags.name
     FROM tags
     WHERE EXISTS (
-      SELECT 1 FROM question_tags WHERE question_tags.tag_id = tags.id
+      SELECT 1 FROM question_tags
+      INNER JOIN questions ON questions.id = question_tags.question_id
+      WHERE question_tags.tag_id = tags.id AND questions.exam_id = ?
     )
     ORDER BY tags.name COLLATE NOCASE ASC
-  `).all() as TagRow[]
+  `).all(examId) as TagRow[]
 
   return rows
 }
@@ -283,7 +333,7 @@ export function listTags(): Tag[] {
 export function getQuestionById(id: number) {
   const database = getDb()
   const row = database.prepare(`
-    SELECT id, prompt, explanation, note, created_at, updated_at
+    SELECT *
     FROM questions
     WHERE id = ?
   `).get(id) as QuestionRow | undefined
@@ -300,12 +350,14 @@ export function getQuestionById(id: number) {
 
 function createQuestion(database: Database.Database, payload: QuestionPayload) {
   const normalized = normalizePayload(payload)
+  const examId = normalized.examId ?? (database.prepare('SELECT id FROM exams ORDER BY id LIMIT 1').get() as { id: number }).id
+  getExam(examId)
   const timestamp = nowIso()
 
   const result = database.prepare(`
-    INSERT INTO questions (prompt, explanation, note, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(normalized.prompt, normalized.explanation, normalized.note, timestamp, timestamp)
+    INSERT INTO questions (prompt, image_data_url, explanation, note, created_at, updated_at, exam_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(normalized.prompt, normalized.imageDataUrl || '', normalized.explanation, normalized.note, timestamp, timestamp, examId)
 
   const questionId = Number(result.lastInsertRowid)
   replaceAnswers(database, questionId, normalized.answers)
@@ -315,14 +367,16 @@ function createQuestion(database: Database.Database, payload: QuestionPayload) {
 }
 
 export function createQuestionRecord(payload: QuestionPayload) {
-  return createQuestion(getDb(), payload)
+  getExam(payload.examId as number)
+  const database = getDb()
+  return database.transaction(() => createQuestion(database, payload))()
 }
 
 export function updateQuestionRecord(id: number, payload: QuestionPayload) {
   const database = getDb()
   const normalized = normalizePayload(payload)
 
-  const exists = database.prepare('SELECT id FROM questions WHERE id = ?').get(id) as { id: number } | undefined
+  const exists = database.prepare('SELECT id, exam_id FROM questions WHERE id = ?').get(id) as { id: number, exam_id: number } | undefined
 
   if (!exists) {
     throw createError({
@@ -331,14 +385,18 @@ export function updateQuestionRecord(id: number, payload: QuestionPayload) {
     })
   }
 
-  database.prepare(`
+  const examId = normalized.examId ?? exists.exam_id
+  getExam(examId)
+  database.transaction(() => {
+    database.prepare(`
     UPDATE questions
-    SET prompt = ?, explanation = ?, note = ?, updated_at = ?
+    SET prompt = ?, image_data_url = ?, explanation = ?, note = ?, updated_at = ?, exam_id = ?
     WHERE id = ?
-  `).run(normalized.prompt, normalized.explanation, normalized.note, nowIso(), id)
+    `).run(normalized.prompt, normalized.imageDataUrl || '', normalized.explanation, normalized.note, nowIso(), examId, id)
 
-  replaceAnswers(database, id, normalized.answers)
-  syncTags(database, id, normalized.tags)
+    replaceAnswers(database, id, normalized.answers)
+    syncTags(database, id, normalized.tags)
+  })()
 
   return getQuestionById(id)
 }
@@ -368,9 +426,11 @@ export function deleteQuestionRecord(id: number) {
   return { success: true }
 }
 
-export function exportQuestions(): QuizExport {
-  const questions = listQuestions().map(question => ({
+export function exportQuestions(examId: number): QuizExport {
+  const exam = getExam(examId)
+  const questions = listQuestions({ examId }).map(question => ({
     prompt: question.prompt,
+    imageDataUrl: question.imageDataUrl,
     explanation: question.explanation,
     note: question.note,
     tags: question.tags.map(tag => tag.name),
@@ -382,13 +442,15 @@ export function exportQuestions(): QuizExport {
 
   return {
     version: 1,
+    examName: exam.name,
     exportedAt: nowIso(),
     questions
   }
 }
 
-export function importQuestions(data: QuizExport | { questions?: QuestionPayload[] }, options?: { replaceExisting?: boolean }) {
+export function importQuestions(data: QuizExport | { questions?: QuestionPayload[] }, options: { replaceExisting?: boolean, examId: number }) {
   const database = getDb()
+  getExam(options.examId)
   const questions = Array.isArray(data?.questions) ? data.questions : []
 
   if (!questions.length) {
@@ -400,14 +462,11 @@ export function importQuestions(data: QuizExport | { questions?: QuestionPayload
 
   const transaction = database.transaction(() => {
     if (options?.replaceExisting) {
-      database.prepare('DELETE FROM question_tags').run()
-      database.prepare('DELETE FROM answers').run()
-      database.prepare('DELETE FROM questions').run()
-      database.prepare('DELETE FROM tags').run()
+      database.prepare('DELETE FROM questions WHERE exam_id = ?').run(options.examId)
     }
 
     for (const question of questions) {
-      createQuestion(database, question)
+      createQuestion(database, { ...question, examId: options.examId })
     }
   })
 
@@ -415,6 +474,41 @@ export function importQuestions(data: QuizExport | { questions?: QuestionPayload
 
   return {
     imported: questions.length,
-    total: listQuestions().length
+    total: listQuestions({ examId: options.examId }).length
   }
+}
+
+export function getExam(id: number) {
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw createError({ statusCode: 400, statusMessage: 'Selecciona un examen valido.' })
+  }
+  const exam = getDb().prepare('SELECT id, name FROM exams WHERE id = ?').get(id) as { id: number, name: string } | undefined
+  if (!exam) throw createError({ statusCode: 404, statusMessage: 'Examen no encontrado.' })
+  return exam
+}
+
+export function listExams(): Exam[] {
+  return getDb().prepare(`
+    SELECT exams.id, exams.name, COUNT(questions.id) AS questionCount
+    FROM exams LEFT JOIN questions ON questions.exam_id = exams.id
+    GROUP BY exams.id ORDER BY exams.name COLLATE NOCASE
+  `).all() as Exam[]
+}
+
+export function saveExam(name: unknown, id?: number) {
+  if (typeof name !== 'string' || !name.trim() || name.trim().length > 120) {
+    throw createError({ statusCode: 400, statusMessage: 'El nombre debe tener entre 1 y 120 caracteres.' })
+  }
+  const database = getDb()
+  if (id !== undefined) getExam(id)
+  const duplicate = database.prepare('SELECT id FROM exams WHERE name = ?').get(name.trim()) as { id: number } | undefined
+  if (duplicate && duplicate.id !== id) {
+    throw createError({ statusCode: 409, statusMessage: 'Ya existe un examen con ese nombre.' })
+  }
+  if (id !== undefined) {
+    database.prepare('UPDATE exams SET name = ? WHERE id = ?').run(name.trim(), id)
+  } else {
+    id = Number(database.prepare('INSERT INTO exams (name) VALUES (?)').run(name.trim()).lastInsertRowid)
+  }
+  return getExam(id)
 }

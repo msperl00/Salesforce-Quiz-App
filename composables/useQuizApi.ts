@@ -1,8 +1,10 @@
 import type { Question, QuestionPayload, QuizExport, Tag } from '~/types/quiz'
 
 export function useQuizApi() {
+  const examId = Number(useRoute().query.examId)
   async function listQuestions(params?: { search?: string, tag?: string }) {
     const query = new URLSearchParams()
+    query.set('examId', String(examId))
 
     if (params?.search) {
       query.set('search', params.search)
@@ -19,7 +21,7 @@ export function useQuizApi() {
   }
 
   async function listTags() {
-    const response = await $fetch<{ tags: Tag[] }>('/api/tags')
+    const response = await $fetch<{ tags: Tag[] }>('/api/tags', { query: { examId } })
 
     return response.tags
   }
@@ -27,7 +29,7 @@ export function useQuizApi() {
   async function createQuestion(payload: QuestionPayload) {
     const response = await $fetch<{ question: Question }>('/api/questions', {
       method: 'POST',
-      body: payload
+      body: { ...payload, examId }
     })
 
     return response.question
@@ -51,11 +53,13 @@ export function useQuizApi() {
   async function importJson(payload: QuizExport & { replaceExisting?: boolean }) {
     return $fetch<{ imported: number, total: number }>('/api/import/json', {
       method: 'POST',
+      query: { examId },
       body: payload
     })
   }
 
   return {
+    examId,
     listQuestions,
     listTags,
     createQuestion,

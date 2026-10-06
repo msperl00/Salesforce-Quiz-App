@@ -2,6 +2,7 @@
 import type { Question, QuestionPayload, QuizExport, Tag } from '~/types/quiz'
 
 const api = useQuizApi()
+const { data: examsData } = await useFetch('/api/exams')
 
 const selectedTag = ref('')
 const search = ref('')
@@ -10,6 +11,7 @@ const saving = ref(false)
 const loading = ref(false)
 const message = ref<{ type: 'success' | 'warning', text: string } | null>(null)
 const importFile = ref<File | null>(null)
+const formVersion = ref(0)
 
 const questions = ref<Question[]>([])
 const tags = ref<Tag[]>([])
@@ -49,6 +51,7 @@ async function saveQuestion(payload: QuestionPayload) {
     }
 
     editingQuestion.value = null
+    formVersion.value += 1
     await loadData()
   } catch (error: any) {
     message.value = {
@@ -78,7 +81,7 @@ async function removeQuestion(question: Question) {
 }
 
 function downloadExport() {
-  window.open('/api/export/json', '_blank')
+  window.open(`/api/export/json?examId=${api.examId}`, '_blank')
 }
 
 async function importJson(replaceExisting = false) {
@@ -86,6 +89,8 @@ async function importJson(replaceExisting = false) {
     message.value = { type: 'warning', text: 'Selecciona un fichero JSON primero.' }
     return
   }
+
+  if (replaceExisting && !window.confirm('Se reemplazarán todas las preguntas de este examen. ¿Continuar?')) return
 
   try {
     const raw = await importFile.value.text()
@@ -128,6 +133,7 @@ const stats = computed(() => {
 
 <template>
   <div class="stack">
+    <ExamHeading :exam-id="api.examId" />
     <section class="stats-grid">
       <article class="stat-card panel">
         <span class="muted">Preguntas</span>
@@ -151,7 +157,7 @@ const stats = computed(() => {
       <div class="section-title">
         <div>
           <h2>Filtros e intercambio</h2>
-          <p class="muted">Búsqueda rápida, filtro por etiqueta e import/export JSON.</p>
+          <p class="muted">Busca por tema o intercambia las preguntas de este examen. Reemplazar solo afecta al examen seleccionado.</p>
         </div>
       </div>
 
@@ -182,8 +188,10 @@ const stats = computed(() => {
 
     <div class="page-grid">
       <QuestionForm
+        :key="formVersion"
         :model-value="editingQuestion"
         :saving="saving"
+        :exams="examsData?.exams"
         @cancel="editingQuestion = null"
         @save="saveQuestion"
       />

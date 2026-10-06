@@ -24,6 +24,13 @@ const emit = defineEmits<{
 
     <div v-if="questions.length" class="question-list">
       <article v-for="question in questions" :key="question.id" class="question-card">
+        <img
+          v-if="question.imageDataUrl"
+          class="question-image compact"
+          :src="question.imageDataUrl"
+          alt="Imagen de apoyo para la pregunta"
+        >
+
         <div class="question-header">
           <div class="stack" style="gap: 0.4rem;">
             <h3>{{ question.prompt }}</h3>

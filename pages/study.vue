@@ -50,6 +50,7 @@ function previousQuestion() {
 
 <template>
   <div class="stack">
+    <ExamHeading :exam-id="api.examId" />
     <section class="panel" style="padding: 1.25rem;">
       <div class="section-title">
         <div>
@@ -78,6 +79,13 @@ function previousQuestion() {
     </section>
 
     <section v-if="currentQuestion" class="study-card panel">
+      <img
+        v-if="currentQuestion.imageDataUrl"
+        class="question-image"
+        :src="currentQuestion.imageDataUrl"
+        alt="Imagen de apoyo para la pregunta"
+      >
+
       <div class="section-title">
         <div>
           <p class="muted">Pregunta {{ currentIndex + 1 }} de {{ studyQuestions.length }}</p>

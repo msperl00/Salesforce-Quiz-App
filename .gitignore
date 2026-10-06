@@ -5,6 +5,9 @@ node_modules
 data/*.db
 data/*.sqlite
 data/*.sqlite3
+data/*-shm
+data/*-wal
+data/*-journal
 data/*.json
 !.gitkeep
 *.log

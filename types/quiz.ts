@@ -11,7 +11,9 @@ export interface Tag {
 
 export interface Question {
   id: number
+  examId: number
   prompt: string
+  imageDataUrl: string
   explanation: string
   note: string
   answers: AnswerInput[]
@@ -21,7 +23,9 @@ export interface Question {
 }
 
 export interface QuestionPayload {
+  examId?: number
   prompt: string
+  imageDataUrl?: string
   explanation: string
   note: string
   answers: AnswerInput[]
@@ -35,8 +39,15 @@ export interface QuestionFilters {
 
 export interface QuizExport {
   version: 1
+  examName?: string
   exportedAt: string
   questions: QuestionPayload[]
+}
+
+export interface Exam {
+  id: number
+  name: string
+  questionCount: number
 }
 
 export interface ExamSubmission {

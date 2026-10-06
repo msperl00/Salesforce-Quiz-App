@@ -1,3 +1,8 @@
+<script setup lang="ts">
+const route = useRoute()
+const examQuery = computed(() => ({ examId: route.query.examId }))
+</script>
+
 <template>
   <div class="app-shell">
     <header class="topbar">
@@ -7,14 +12,17 @@
       </div>
 
       <nav class="nav">
-        <NuxtLink to="/">Preguntas</NuxtLink>
-        <NuxtLink to="/study">Estudiar</NuxtLink>
-        <NuxtLink to="/exam">Modo examen</NuxtLink>
+        <NuxtLink to="/exams">Exámenes</NuxtLink>
+        <template v-if="route.query.examId && route.path !== '/exams'">
+          <NuxtLink :to="{ path: '/', query: examQuery }">Preguntas</NuxtLink>
+          <NuxtLink :to="{ path: '/study', query: examQuery }">Estudiar</NuxtLink>
+          <NuxtLink :to="{ path: '/exam', query: examQuery }">Simulacro</NuxtLink>
+        </template>
       </nav>
     </header>
 
     <main class="page-wrap">
-      <NuxtPage />
+      <NuxtPage :page-key="page => `${page.path}:${page.query.examId || ''}`" />
     </main>
   </div>
 </template>

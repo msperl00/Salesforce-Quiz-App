@@ -1,9 +1,10 @@
 import { readBody } from 'h3'
 import type { QuizExport } from '~/types/quiz'
 import { importQuestions } from '~/server/utils/questions'
+import { getExamQuery } from '~/server/utils/exam-query'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<QuizExport & { replaceExisting?: boolean }>(event)
 
-  return importQuestions(body, { replaceExisting: Boolean(body.replaceExisting) })
+  return importQuestions(body, { replaceExisting: Boolean(body.replaceExisting), examId: getExamQuery(event) })
 })

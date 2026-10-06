@@ -10,15 +10,17 @@ App web simple para estudiar preguntas de certificaciones de Salesforce con una 
 
 ## Requisito práctico de Node
 
-- El proyecto se ha construido correctamente con Node `22.10.0`.
-- Algunas dependencias muestran avisos de engine; para evitar ruido, es mejor usar Node `22.12+` o `20.19+`.
+- Usa Node `22.12+` o `20.19+` para desarrollo y compilación.
+- La build actual se ha validado con Node `22.14.0`; Node `22.10.0` puede quedarse bloqueado con esta versión de Nuxt.
 
 ## Qué incluye el MVP
 
 - CRUD de preguntas
+- Exámenes independientes: crear, renombrar, estudiar y hacer simulacros por certificación
 - Varias respuestas por pregunta
 - Marcado de una o varias respuestas correctas
 - Explicación y nota rápida
+- Imagen opcional de apoyo por pregunta (PNG, JPG, WEBP o GIF)
 - Etiquetas por tema
 - Vista de estudio
 - Vista tipo examen
@@ -68,6 +70,17 @@ npm run restart-preview
 
 ## JSON de importación
 
+Al entrar, elige un examen en `/exams`. Las preguntas existentes pasan automáticamente
+a `General`, que puedes renombrar. Las etiquetas, búsquedas y simulacros se limitan al
+examen seleccionado. El enlace conserva el examen al recargar o cambiar de vista.
+Al editar una pregunta, puedes cambiar su examen para moverla con sus respuestas e imagen.
+
+La exportación incluye solo sus preguntas e imágenes y el nombre del examen.
+Al importar, las preguntas se añaden al examen abierto, también con JSON antiguos.
+`Importar reemplazando` sustituye únicamente las preguntas de ese examen.
+
+Para validar migración y aislamiento con una base temporal: `npm run build` y `npm test`.
+
 Formato esperado:
 
 ```json
@@ -77,6 +90,7 @@ Formato esperado:
   "questions": [
     {
       "prompt": "Question text",
+      "imageDataUrl": "data:image/png;base64,...",
       "explanation": "Why this is correct",
       "note": "Short note",
       "tags": ["Security", "Flows"],
