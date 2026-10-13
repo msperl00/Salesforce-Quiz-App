@@ -76,6 +76,9 @@ test('tags are unique and shuffling preserves every question without mutating th
     { id: 3, tags: [] }
   ]
   assert.deepEqual(questionTags(original).map(t => t.name), ['Cafe', 'IBA'])
+  assert.deepEqual(questionTags(original), [{ id: 2, name: 'Cafe', count: 1 }, { id: 1, name: 'IBA', count: 2 }])
+  assert.deepEqual(questionTags([{ tags: [{ id: 1, name: 'IBA' }, { id: 1, name: 'IBA' }] }]),
+    [{ id: 1, name: 'IBA', count: 1 }])
   assert.deepEqual(shuffledQuestions(original, () => 0).map(q => q.id), [2, 3, 1])
   assert.deepEqual(original.map(q => q.id), [1, 2, 3])
   assert.deepEqual(shuffledQuestions([]), [])

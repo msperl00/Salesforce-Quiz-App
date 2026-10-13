@@ -1,7 +1,12 @@
 export function questionTags(questions) {
   const tags = new Map()
   for (const question of questions) {
-    for (const tag of question.tags) tags.set(tag.name, tag)
+    const counted = new Set()
+    for (const tag of question.tags) {
+      if (counted.has(tag.name)) continue
+      counted.add(tag.name)
+      tags.set(tag.name, { ...tag, count: (tags.get(tag.name)?.count || 0) + 1 })
+    }
   }
   return [...tags.values()].sort((a, b) => a.name.localeCompare(b.name))
 }

@@ -79,12 +79,21 @@ test('415-question list, filters, export and SSR stay complete and exam-scoped',
     assert.ok(study.includes('1. Fixture question'))
     assert.ok(study.includes('question-bank:2'))
     assert.ok(!study.includes('Must stay in other exam'))
+    const exam = await (await get('/exam?examId=2')).text()
+    assert.ok(exam.includes('Todas (415)'))
+    assert.ok(exam.includes('Even (207)'))
+    assert.ok(exam.includes('Odd (208)'))
+    assert.ok(exam.includes('415 preguntas disponibles'))
+    assert.ok(exam.includes('Usar todas (415)'))
     const management = await (await get('/?examId=2')).text()
     assert.equal([...management.matchAll(/class="question-card"/g)].length, 25)
     assert.ok(management.includes('25')) // The serialized bank retains all questions beyond the visible page.
     const other = await (await get('/api/questions?examId=3')).json()
     assert.equal(other.questions.length, 1)
     assert.equal(other.questions[0].prompt, 'Must stay in other exam')
+    const smallExam = await (await get('/exam?examId=3')).text()
+    assert.ok(smallExam.includes('Todas (1)'))
+    assert.match(smallExam, /<input(?=[^>]*id="count")(?=[^>]*value="1")[^>]*>/)
   } finally {
     if (server.exitCode === null && server.signalCode === null) {
       const exited = once(server, 'exit')

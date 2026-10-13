@@ -5,9 +5,9 @@ import { questionTags, shuffledQuestions } from '~/utils/quiz.mjs'
 const api = useQuizApi()
 
 const { data: allQuestions, pending, error, refresh } = await useQuestionBank(api)
-const tags = computed<Tag[]>(() => questionTags(allQuestions.value))
+const tags = computed<(Tag & { count: number })[]>(() => questionTags(allQuestions.value))
 const selectedTag = ref('')
-const desiredCount = ref(10)
+const desiredCount = ref(Math.min(10, allQuestions.value.length) || 1)
 const started = ref(false)
 const submitted = ref(false)
 const currentIndex = ref(0)
@@ -18,9 +18,18 @@ const currentQuestion = computed(() => examQuestions.value[currentIndex.value] |
 const pool = computed(() => selectedTag.value
   ? allQuestions.value.filter(question => question.tags.some(tag => tag.name === selectedTag.value))
   : allQuestions.value)
+const validCount = computed(() => Number.isInteger(desiredCount.value)
+  && desiredCount.value >= 1 && desiredCount.value <= pool.value.length)
+
+watch(pool, (next, previous) => {
+  if (started.value && !submitted.value) return
+  if (desiredCount.value === previous.length || desiredCount.value > next.length) {
+    desiredCount.value = Math.max(1, next.length)
+  }
+})
 
 function startExam() {
-  if (!pool.value.length || !Number.isInteger(desiredCount.value) || desiredCount.value < 1) return
+  if (!validCount.value || pending.value) return
   examQuestions.value = shuffledQuestions(pool.value)
     .slice(0, Math.min(desiredCount.value, pool.value.length))
 
@@ -86,33 +95,47 @@ const score = computed(() => {
           <h2>Simulacro</h2>
           <p class="muted">Sesión cerrada con puntuación final y revisión de errores.</p>
         </div>
+        <p class="muted" role="status" aria-live="polite">{{ pool.length }} preguntas disponibles</p>
       </div>
 
       <div class="field-grid">
         <div class="field">
           <label for="tag">Etiqueta</label>
           <select id="tag" v-model="selectedTag" :disabled="started && !submitted">
-            <option value="">Todas</option>
-            <option v-for="tag in tags" :key="tag.id" :value="tag.name">{{ tag.name }}</option>
+            <option value="">Todas ({{ allQuestions.length }})</option>
+            <option v-for="tag in tags" :key="tag.id" :value="tag.name">{{ tag.name }} ({{ tag.count }})</option>
           </select>
         </div>
 
         <div class="field">
-          <label for="count">Número de preguntas</label>
+          <label for="count">Número de preguntas del simulacro</label>
           <input
             id="count"
             v-model.number="desiredCount"
             min="1"
             :max="pool.length || 1"
             type="number"
+            aria-describedby="count-help"
+            :aria-invalid="pool.length > 0 && !validCount"
             :disabled="started && !submitted"
           >
+          <p v-if="pool.length" id="count-help" class="muted" style="margin: 0;">
+            Puedes elegir entre 1 y {{ pool.length }} preguntas.
+          </p>
         </div>
       </div>
 
       <div class="actions" style="margin-top: 1rem;">
-        <button class="btn primary" type="button" :disabled="pending || !pool.length || !Number.isInteger(desiredCount) || desiredCount < 1" @click="startExam">
+        <button class="btn primary" type="button" :disabled="pending || !validCount" @click="startExam">
           {{ started ? 'Reiniciar examen' : 'Empezar examen' }}
+        </button>
+        <button
+          class="btn ghost"
+          type="button"
+          :disabled="pending || !pool.length || (started && !submitted)"
+          @click="desiredCount = pool.length"
+        >
+          Usar todas ({{ pool.length }})
         </button>
 
         <button
