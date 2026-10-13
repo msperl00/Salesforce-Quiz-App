@@ -1,4 +1,15 @@
 export async function migrateDatabase(client) {
+  const requiredNames = ['exams', 'questions', 'answers', 'tags', 'question_tags',
+    'users', 'invitations', 'login_attempts', 'questions_exam_id']
+  const [objects, fields] = await client.batch([
+    { sql: `SELECT name FROM sqlite_master WHERE name IN (${requiredNames.map(() => '?').join(',')})`, args: requiredNames },
+    { sql: 'PRAGMA table_info(questions)', args: [] }
+  ], 'read')
+  const names = new Set(objects.rows.map(row => row.name))
+  const questionFields = new Set(fields.rows.map(row => row.name))
+  // Warm schemas need no write transaction or repeated CREATE statements on every cold start.
+  if (requiredNames.every(name => names.has(name)) && questionFields.has('image_data_url') && questionFields.has('exam_id')) return
+
   const tx = await client.transaction('write')
   try {
     for (const sql of [
