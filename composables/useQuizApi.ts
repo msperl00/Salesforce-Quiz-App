@@ -59,6 +59,10 @@ export function useQuizApi() {
     })
   }
 
+  async function exportJson() {
+    return $fetch<QuizExport>('/api/export/json', { query: { examId } })
+  }
+
   return {
     examId,
     listQuestions,
@@ -66,6 +70,7 @@ export function useQuizApi() {
     createQuestion,
     updateQuestion,
     deleteQuestion,
+    exportJson,
     importJson
   }
 }

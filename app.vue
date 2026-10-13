@@ -10,6 +10,7 @@ const examQuery = computed(() => ({ examId: route.query.examId }))
 
 <template>
   <div class="app-shell">
+    <NuxtLoadingIndicator color="#376a5b" />
     <header class="topbar">
       <div>
         <p class="eyebrow">Salesforce Quiz App</p>

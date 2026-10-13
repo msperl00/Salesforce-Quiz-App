@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
 
   const result = await exportQuestions(await getExamQuery(event))
   if (Buffer.byteLength(JSON.stringify(result)) > 4_000_000) {
-    throw createError({ statusCode: 413, statusMessage: 'La exportacion es demasiado grande. Usa el exportador de la pantalla de preguntas.' })
+    throw createError({ statusCode: 413, statusMessage: 'La exportacion supera 4 MB. Prueba con un examen mas pequeno.' })
   }
   return result
 })

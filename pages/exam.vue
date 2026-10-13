@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { Question, Tag } from '~/types/quiz'
+import { questionTags, shuffledQuestions } from '~/utils/quiz.mjs'
 
 const api = useQuizApi()
 
-const allQuestions = ref<Question[]>(await api.listQuestions())
-const tags = ref<Tag[]>(await api.listTags())
+const { data: allQuestions, pending, error, refresh } = await useQuestionBank(api)
+const tags = computed<Tag[]>(() => questionTags(allQuestions.value))
 const selectedTag = ref('')
 const desiredCount = ref(10)
 const started = ref(false)
@@ -20,8 +21,7 @@ const pool = computed(() => selectedTag.value
 
 function startExam() {
   if (!pool.value.length || !Number.isInteger(desiredCount.value) || desiredCount.value < 1) return
-  examQuestions.value = [...pool.value]
-    .sort(() => Math.random() - 0.5)
+  examQuestions.value = shuffledQuestions(pool.value)
     .slice(0, Math.min(desiredCount.value, pool.value.length))
 
   answersByQuestion.value = {}
@@ -75,6 +75,11 @@ const score = computed(() => {
 <template>
   <div class="stack">
     <ExamHeading :exam-id="api.examId" />
+    <div v-if="pending" class="banner" role="status">Cargando preguntas...</div>
+    <div v-if="error" class="banner warning" role="alert">
+      No se pudieron cargar las preguntas.
+      <button class="btn ghost small" type="button" :disabled="pending" @click="refresh()">Reintentar</button>
+    </div>
     <section class="panel" style="padding: 1.25rem;">
       <div class="section-title">
         <div>
@@ -106,7 +111,7 @@ const score = computed(() => {
       </div>
 
       <div class="actions" style="margin-top: 1rem;">
-        <button class="btn primary" type="button" :disabled="!pool.length || !Number.isInteger(desiredCount) || desiredCount < 1" @click="startExam">
+        <button class="btn primary" type="button" :disabled="pending || !pool.length || !Number.isInteger(desiredCount) || desiredCount < 1" @click="startExam">
           {{ started ? 'Reiniciar examen' : 'Empezar examen' }}
         </button>
 
@@ -119,7 +124,7 @@ const score = computed(() => {
           Corregir
         </button>
       </div>
-      <p v-if="!pool.length" class="empty-state">No hay preguntas para este examen y filtro. Añádelas desde Preguntas.</p>
+      <p v-if="!pending && !error && !pool.length" class="empty-state">No hay preguntas para este examen y filtro. Añádelas desde Preguntas.</p>
     </section>
 
     <section v-if="started && currentQuestion" class="panel" style="padding: 1.25rem;">

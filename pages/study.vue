@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { Question, Tag } from '~/types/quiz'
+import { questionTags, shuffledQuestions } from '~/utils/quiz.mjs'
 
 const api = useQuizApi()
 
-const allQuestions = ref<Question[]>(await api.listQuestions())
-const tags = ref<Tag[]>(await api.listTags())
+const { data: allQuestions, pending, error, refresh } = await useQuestionBank(api)
+const tags = computed<Tag[]>(() => questionTags(allQuestions.value))
 const selectedTag = ref('')
 const currentIndex = ref(0)
 const reveal = ref(false)
@@ -12,12 +13,13 @@ const shuffleMode = ref(false)
 const studyQuestions = ref<Question[]>([])
 
 function rebuildStudyQuestions() {
-  const base = selectedTag.value
+  const filtered = selectedTag.value
     ? allQuestions.value.filter(question => question.tags.some(tag => tag.name === selectedTag.value))
     : allQuestions.value
+  const base = [...filtered].sort((a, b) => a.id - b.id)
 
   studyQuestions.value = shuffleMode.value
-    ? [...base].sort(() => Math.random() - 0.5)
+    ? shuffledQuestions(base)
     : base
 
   currentIndex.value = 0
@@ -26,8 +28,7 @@ function rebuildStudyQuestions() {
 
 const currentQuestion = computed(() => studyQuestions.value[currentIndex.value] || null)
 
-watch([selectedTag, shuffleMode], rebuildStudyQuestions)
-rebuildStudyQuestions()
+watch([allQuestions, selectedTag, shuffleMode], rebuildStudyQuestions, { immediate: true })
 
 function nextQuestion() {
   if (!studyQuestions.value.length) {
@@ -51,6 +52,11 @@ function previousQuestion() {
 <template>
   <div class="stack">
     <ExamHeading :exam-id="api.examId" />
+    <div v-if="pending" class="banner" role="status">Cargando preguntas...</div>
+    <div v-if="error" class="banner warning" role="alert">
+      No se pudieron cargar las preguntas.
+      <button class="btn ghost small" type="button" :disabled="pending" @click="refresh()">Reintentar</button>
+    </div>
     <section class="panel" style="padding: 1.25rem;">
       <div class="section-title">
         <div>
@@ -88,7 +94,7 @@ function previousQuestion() {
 
       <div class="section-title">
         <div>
-          <p class="muted">Pregunta {{ currentIndex + 1 }} de {{ studyQuestions.length }}</p>
+          <p class="muted" aria-live="polite">Pregunta {{ currentIndex + 1 }} de {{ studyQuestions.length }}</p>
           <h2>{{ currentQuestion.prompt }}</h2>
         </div>
       </div>
@@ -127,7 +133,7 @@ function previousQuestion() {
       </div>
     </section>
 
-    <div v-else class="empty-state">
+    <div v-else-if="!pending && !error" class="empty-state">
       No hay preguntas para el filtro actual.
     </div>
   </div>

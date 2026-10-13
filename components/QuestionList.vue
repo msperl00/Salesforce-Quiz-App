@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import type { Question } from '~/types/quiz'
 
-defineProps<{
+const props = defineProps<{
   questions: Question[]
   canEdit?: boolean
+  busy?: boolean
 }>()
+
+const page = ref(1)
+const pageSize = 25
+const pageCount = computed(() => Math.max(1, Math.ceil(props.questions.length / pageSize)))
+const visibleQuestions = computed(() => props.questions.slice((page.value - 1) * pageSize, page.value * pageSize))
+watch(() => props.questions, () => { page.value = 1 })
 
 const emit = defineEmits<{
   edit: [question: Question]
@@ -24,7 +31,7 @@ const emit = defineEmits<{
     </div>
 
     <div v-if="questions.length" class="question-list">
-      <article v-for="question in questions" :key="question.id" class="question-card">
+      <article v-for="question in visibleQuestions" :key="question.id" class="question-card">
         <img
           v-if="question.imageUrl"
           class="question-image compact"
@@ -42,8 +49,8 @@ const emit = defineEmits<{
           </div>
 
           <div v-if="canEdit" class="inline-actions">
-            <button class="btn small ghost" type="button" @click="emit('edit', question)">Editar</button>
-            <button class="btn small danger" type="button" @click="emit('remove', question)">Borrar</button>
+            <button class="btn small ghost" type="button" :disabled="busy" @click="emit('edit', question)">Editar</button>
+            <button class="btn small danger" type="button" :disabled="busy" @click="emit('remove', question)">Borrar</button>
           </div>
         </div>
 
@@ -69,7 +76,13 @@ const emit = defineEmits<{
       </article>
     </div>
 
-    <div v-else class="empty-state">
+    <div v-if="questions.length > pageSize" class="actions" style="margin-top: 1rem;">
+      <button class="btn ghost" type="button" :disabled="page === 1 || busy" @click="page -= 1">Anterior</button>
+      <span class="muted" aria-live="polite">Pagina {{ page }} de {{ pageCount }}</span>
+      <button class="btn ghost" type="button" :disabled="page === pageCount || busy" @click="page += 1">Siguiente</button>
+    </div>
+
+    <div v-if="!questions.length" class="empty-state">
       No hay preguntas todavía. Crea la primera desde el panel de la izquierda.
     </div>
   </section>

@@ -1,6 +1,7 @@
 import type { Exam, Question, QuestionPayload, QuizExport } from '~/types/quiz'
 import { getDb, query, transaction, type Database } from './database'
 import type { InStatement } from '@libsql/client'
+import { hydrateQuestions } from '../database/question-reader.mjs'
 
 function normalize(payload: QuestionPayload) {
   if (!payload || typeof payload.prompt !== 'string' || !payload.prompt.trim()) {
@@ -53,18 +54,7 @@ export async function saveExam(name: unknown, id?: number) {
 }
 
 async function hydrate(db: Database, row: any, includeImage = false): Promise<Question> {
-  const answers = await query(db, 'SELECT id, text, is_correct FROM answers WHERE question_id = ? ORDER BY position, id', [row.id])
-  const tags = await query(db, `SELECT tags.id, tags.name FROM tags JOIN question_tags ON question_tags.tag_id = tags.id
-    WHERE question_tags.question_id = ? ORDER BY tags.name COLLATE NOCASE`, [row.id])
-  return {
-    id: Number(row.id), examId: Number(row.exam_id), prompt: String(row.prompt),
-    imageDataUrl: includeImage ? String(row.image_data_url || '') : '',
-    imageUrl: row.has_image || row.image_data_url ? `/api/questions/${row.id}/image?v=${encodeURIComponent(row.updated_at)}` : '',
-    explanation: String(row.explanation || ''), note: String(row.note || ''),
-    createdAt: String(row.created_at), updatedAt: String(row.updated_at),
-    answers: answers.map(a => ({ id: Number(a.id), text: String(a.text), isCorrect: Boolean(a.is_correct) })),
-    tags: tags.map(t => ({ id: Number(t.id), name: String(t.name) }))
-  }
+  return (await hydrateQuestions(db, [row], includeImage))[0]
 }
 export async function listQuestions(filters: { search?: string, tag?: string, examId: number }) {
   const db = await getDb()
@@ -82,7 +72,7 @@ export async function listQuestions(filters: { search?: string, tag?: string, ex
   }
   const rows = await query(db, `SELECT id, exam_id, prompt, explanation, note, created_at, updated_at,
     length(image_data_url) > 0 AS has_image FROM questions WHERE ${conditions.join(' AND ')} ORDER BY updated_at DESC`, args)
-  return Promise.all(rows.map(row => hydrate(db, row)))
+  return hydrateQuestions(db, rows) as Promise<Question[]>
 }
 export async function listTags(examId: number) {
   const db = await getDb()
@@ -145,7 +135,7 @@ export async function exportQuestions(examId: number): Promise<QuizExport> {
   const exam = await getExam(examId)
   const db = await getDb()
   const rows = await query(db, 'SELECT * FROM questions WHERE exam_id = ?', [examId])
-  const questions = await Promise.all(rows.map(row => hydrate(db, row, true)))
+  const questions: Question[] = await hydrateQuestions(db, rows, true)
   return { version: 1, examName: exam.name, exportedAt: new Date().toISOString(), questions: questions.map(q => ({
     prompt: q.prompt, imageDataUrl: q.imageDataUrl, explanation: q.explanation, note: q.note,
     tags: q.tags.map(t => t.name), answers: q.answers.map(a => ({ text: a.text, isCorrect: a.isCorrect }))

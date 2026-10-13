@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Question, QuestionPayload, QuizExport, Tag } from '~/types/quiz'
+import { questionTags } from '~/utils/quiz.mjs'
 
 const api = useQuizApi()
 const { data: account } = await useAccount()
@@ -13,30 +14,29 @@ const loading = ref(false)
 const message = ref<{ type: 'success' | 'warning', text: string } | null>(null)
 const importFile = ref<File | null>(null)
 const formVersion = ref(0)
+const exporting = ref(false)
+const importing = ref(false)
+const deleting = ref(false)
 
-const questions = ref<Question[]>([])
-const tags = ref<Tag[]>([])
+const { data: allQuestions, pending, error: loadError, refresh: refreshBank } = await useQuestionBank(api)
+const tags = computed<Tag[]>(() => questionTags(allQuestions.value))
+const questions = computed(() => {
+  const term = search.value.trim().toLowerCase()
+  return allQuestions.value.filter(question =>
+    (!selectedTag.value || question.tags.some(tag => tag.name === selectedTag.value)) &&
+    (!term || [question.prompt, question.explanation, question.note].some(text => text.toLowerCase().includes(term))))
+})
 
 async function loadData() {
   loading.value = true
 
   try {
-    const [loadedQuestions, loadedTags] = await Promise.all([
-      api.listQuestions({
-        search: search.value || undefined,
-        tag: selectedTag.value || undefined
-      }),
-      api.listTags()
-    ])
-
-    questions.value = loadedQuestions
-    tags.value = loadedTags
+    await refreshBank()
+    if (loadError.value) throw loadError.value
   } finally {
     loading.value = false
   }
 }
-
-await loadData()
 
 async function saveQuestion(payload: QuestionPayload) {
   saving.value = true
@@ -65,20 +65,24 @@ async function saveQuestion(payload: QuestionPayload) {
 }
 
 async function removeQuestion(question: Question) {
+  if (deleting.value) return
   const confirmed = window.confirm(`Vas a borrar la pregunta:\n\n${question.prompt}`)
 
   if (!confirmed) {
     return
   }
 
-  await api.deleteQuestion(question.id)
-
-  if (editingQuestion.value?.id === question.id) {
-    editingQuestion.value = null
+  deleting.value = true
+  try {
+    await api.deleteQuestion(question.id)
+    if (editingQuestion.value?.id === question.id) editingQuestion.value = null
+    message.value = { type: 'success', text: 'Pregunta borrada.' }
+    await loadData()
+  } catch (error: any) {
+    message.value = { type: 'warning', text: error?.data?.statusMessage || 'No se pudo borrar la pregunta.' }
+  } finally {
+    deleting.value = false
   }
-
-  message.value = { type: 'success', text: 'Pregunta borrada.' }
-  await loadData()
 }
 
 async function editQuestion(question: Question) {
@@ -90,16 +94,28 @@ async function editQuestion(question: Question) {
 }
 
 async function downloadExport() {
+  if (exporting.value) return
+  exporting.value = true
   try {
-    const all = await api.listQuestions()
-    const exported: QuestionPayload[] = []
-    for (const item of all) {
-      const q = (await $fetch<{ question: Question }>(`/api/questions/${item.id}`)).question
-      exported.push({ prompt: q.prompt, imageDataUrl: q.imageDataUrl, explanation: q.explanation,
-        note: q.note, tags: q.tags.map(t => t.name), answers: q.answers.map(a => ({ text: a.text, isCorrect: a.isCorrect })) })
+    let exported: QuizExport
+    try {
+      exported = await api.exportJson()
+    } catch (error: any) {
+      if (error?.statusCode !== 413 && error?.response?.status !== 413) throw error
+      // Large image exports exceed the server response limit; fetch only those images separately.
+      const bank = await api.listQuestions()
+      const payloads: QuestionPayload[] = []
+      for (const item of bank) {
+        const q = item.imageUrl
+          ? (await $fetch<{ question: Question }>(`/api/questions/${item.id}`)).question
+          : item
+        payloads.push({ prompt: q.prompt, imageDataUrl: q.imageDataUrl, explanation: q.explanation,
+          note: q.note, tags: q.tags.map(t => t.name), answers: q.answers.map(a => ({ text: a.text, isCorrect: a.isCorrect })) })
+      }
+      exported = { version: 1, exportedAt: new Date().toISOString(),
+        examName: examsData.value?.exams.find(e => e.id === api.examId)?.name, questions: payloads }
     }
-    const blob = new Blob([JSON.stringify({ version: 1, exportedAt: new Date().toISOString(),
-      examName: examsData.value?.exams.find(e => e.id === api.examId)?.name, questions: exported }, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -108,10 +124,13 @@ async function downloadExport() {
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   } catch {
     message.value = { type: 'warning', text: 'No se pudo exportar el examen.' }
+  } finally {
+    exporting.value = false
   }
 }
 
 async function importJson(replaceExisting = false) {
+  if (importing.value) return
   if (!importFile.value) {
     message.value = { type: 'warning', text: 'Selecciona un fichero JSON primero.' }
     return
@@ -119,6 +138,7 @@ async function importJson(replaceExisting = false) {
 
   if (replaceExisting && !window.confirm('Se reemplazarán todas las preguntas de este examen. ¿Continuar?')) return
 
+  importing.value = true
   try {
     const raw = await importFile.value.text()
     if (new Blob([raw]).size > 3_000_000) throw new Error('Importa archivos de hasta 3 MB y 100 preguntas.')
@@ -140,12 +160,10 @@ async function importJson(replaceExisting = false) {
       type: 'warning',
       text: error?.data?.statusMessage || error?.message || 'El fichero JSON no se pudo importar.'
     }
+  } finally {
+    importing.value = false
   }
 }
-
-watch([selectedTag, search], () => {
-  loadData()
-})
 
 const stats = computed(() => {
   const totalAnswers = questions.value.reduce((sum, question) => sum + question.answers.length, 0)
@@ -162,6 +180,10 @@ const stats = computed(() => {
 <template>
   <div class="stack">
     <ExamHeading :exam-id="api.examId" />
+    <div v-if="loadError" class="banner warning" role="alert">
+      No se pudieron cargar las preguntas.
+      <button class="btn ghost small" type="button" :disabled="pending" @click="refreshBank()">Reintentar</button>
+    </div>
     <section class="stats-grid">
       <article class="stat-card panel">
         <span class="muted">Preguntas</span>
@@ -205,11 +227,13 @@ const stats = computed(() => {
       </div>
 
       <div class="toolbar" style="margin-top: 1rem;">
-        <button class="btn primary" type="button" @click="downloadExport">Exportar JSON</button>
+        <button class="btn primary" type="button" :disabled="exporting || pending" @click="downloadExport">
+          {{ exporting ? 'Exportando...' : 'Exportar JSON' }}
+        </button>
         <div v-if="account?.user?.role === 'admin'" class="pill-input">
-          <input type="file" accept="application/json" @change="importFile = ($event.target as HTMLInputElement).files?.[0] || null">
-          <button class="btn ghost" type="button" @click="importJson(false)">Importar sumando</button>
-          <button class="btn danger" type="button" @click="importJson(true)">Importar reemplazando</button>
+          <input type="file" accept="application/json" :disabled="importing" @change="importFile = ($event.target as HTMLInputElement).files?.[0] || null">
+          <button class="btn ghost" type="button" :disabled="importing || saving || deleting" @click="importJson(false)">{{ importing ? 'Importando...' : 'Importar sumando' }}</button>
+          <button class="btn danger" type="button" :disabled="importing || saving || deleting" @click="importJson(true)">Importar reemplazando</button>
         </div>
       </div>
     </section>
@@ -228,12 +252,13 @@ const stats = computed(() => {
       <QuestionList
         :can-edit="account?.user?.role === 'admin'"
         :questions="questions"
+        :busy="loading || pending || saving || importing || deleting"
         @edit="editQuestion"
         @remove="removeQuestion"
       />
     </div>
 
-    <div v-if="loading" class="empty-state">
+    <div v-if="loading || pending" class="empty-state" role="status">
       Cargando preguntas...
     </div>
   </div>
