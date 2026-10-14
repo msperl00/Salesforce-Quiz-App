@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useLanguage()
 const email = ref('')
 const password = ref('')
 const message = ref('')
@@ -15,14 +16,14 @@ async function login() {
 </script>
 <template>
   <section class="panel exam-panel auth-panel">
-    <h2>Iniciar sesión</h2>
-    <p class="muted">Entra para preparar tus certificaciones.</p>
+    <h2>{{ t('Iniciar sesión') }}</h2>
+    <p class="muted">{{ t('Entra para preparar tus certificaciones.') }}</p>
     <form class="stack" @submit.prevent="login">
-      <div class="field"><label for="email">Correo</label><input id="email" v-model="email" type="email" autocomplete="username" required></div>
-      <div class="field"><label for="password">Contraseña</label><input id="password" v-model="password" type="password" autocomplete="current-password" required maxlength="128"></div>
-      <p v-if="message" role="alert" class="form-error">{{ message }}</p>
-      <button class="btn primary" :disabled="busy">{{ busy ? 'Entrando...' : 'Entrar' }}</button>
+      <div class="field"><label for="email">{{ t('Correo') }}</label><input id="email" v-model="email" type="email" autocomplete="username" required></div>
+      <div class="field"><label for="password">{{ t('Contraseña') }}</label><input id="password" v-model="password" type="password" autocomplete="current-password" required maxlength="128"></div>
+      <p v-if="message" role="alert" class="form-error">{{ t(message) }}</p>
+      <button class="btn primary" :disabled="busy">{{ t(busy ? 'Entrando...' : 'Entrar') }}</button>
     </form>
-    <p class="muted">Para crear una cuenta o recuperar el acceso, contacta con el administrador.</p>
+    <p class="muted">{{ t('Para crear una cuenta o recuperar el acceso, contacta con el administrador.') }}</p>
   </section>
 </template>

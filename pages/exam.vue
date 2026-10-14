@@ -3,6 +3,7 @@ import type { Question, Tag } from '~/types/quiz'
 import { questionTags, shuffledQuestions } from '~/utils/quiz.mjs'
 
 const api = useQuizApi()
+const { t } = useLanguage()
 
 const { data: allQuestions, pending, error, refresh } = await useQuestionBank(api)
 const tags = computed<(Tag & { count: number })[]>(() => questionTags(allQuestions.value))
@@ -84,31 +85,31 @@ const score = computed(() => {
 <template>
   <div class="stack">
     <ExamHeading :exam-id="api.examId" />
-    <div v-if="pending" class="banner" role="status">Cargando preguntas...</div>
+    <div v-if="pending" class="banner" role="status">{{ t('Cargando preguntas...') }}</div>
     <div v-if="error" class="banner warning" role="alert">
-      No se pudieron cargar las preguntas.
-      <button class="btn ghost small" type="button" :disabled="pending" @click="refresh()">Reintentar</button>
+      {{ t('No se pudieron cargar las preguntas.') }}
+      <button class="btn ghost small" type="button" :disabled="pending" @click="refresh()">{{ t('Reintentar') }}</button>
     </div>
     <section class="panel" style="padding: 1.25rem;">
       <div class="section-title">
         <div>
-          <h2>Simulacro</h2>
-          <p class="muted">Sesión cerrada con puntuación final y revisión de errores.</p>
+          <h2>{{ t('Simulacro') }}</h2>
+          <p class="muted">{{ t('Sesión cerrada con puntuación final y revisión de errores.') }}</p>
         </div>
-        <p class="muted" role="status" aria-live="polite">{{ pool.length }} preguntas disponibles</p>
+        <p class="muted" role="status" aria-live="polite">{{ t(pool.length === 1 ? '1 pregunta disponible' : '{count} preguntas disponibles', { count: pool.length }) }}</p>
       </div>
 
       <div class="field-grid">
         <div class="field">
-          <label for="tag">Etiqueta</label>
+          <label for="tag">{{ t('Etiqueta') }}</label>
           <select id="tag" v-model="selectedTag" :disabled="started && !submitted">
-            <option value="">Todas ({{ allQuestions.length }})</option>
+            <option value="">{{ t('Todas ({count})', { count: allQuestions.length }) }}</option>
             <option v-for="tag in tags" :key="tag.id" :value="tag.name">{{ tag.name }} ({{ tag.count }})</option>
           </select>
         </div>
 
         <div class="field">
-          <label for="count">Número de preguntas del simulacro</label>
+          <label for="count">{{ t('Número de preguntas del simulacro') }}</label>
           <input
             id="count"
             v-model.number="desiredCount"
@@ -120,14 +121,14 @@ const score = computed(() => {
             :disabled="started && !submitted"
           >
           <p v-if="pool.length" id="count-help" class="muted" style="margin: 0;">
-            Puedes elegir entre 1 y {{ pool.length }} preguntas.
+            {{ t('Puedes elegir entre 1 y {count} preguntas.', { count: pool.length }) }}
           </p>
         </div>
       </div>
 
       <div class="actions" style="margin-top: 1rem;">
         <button class="btn primary" type="button" :disabled="pending || !validCount" @click="startExam">
-          {{ started ? 'Reiniciar examen' : 'Empezar examen' }}
+          {{ t(started ? 'Reiniciar examen' : 'Empezar examen') }}
         </button>
         <button
           class="btn ghost"
@@ -135,7 +136,7 @@ const score = computed(() => {
           :disabled="pending || !pool.length || (started && !submitted)"
           @click="desiredCount = pool.length"
         >
-          Usar todas ({{ pool.length }})
+          {{ t('Usar todas ({count})', { count: pool.length }) }}
         </button>
 
         <button
@@ -144,10 +145,10 @@ const score = computed(() => {
           type="button"
           @click="submitted = true"
         >
-          Corregir
+          {{ t('Corregir') }}
         </button>
       </div>
-      <p v-if="!pending && !error && !pool.length" class="empty-state">No hay preguntas para este examen y filtro. Añádelas desde Preguntas.</p>
+      <p v-if="!pending && !error && !pool.length" class="empty-state">{{ t('No hay preguntas para este examen y filtro. Añádelas desde Preguntas.') }}</p>
     </section>
 
     <section v-if="started && currentQuestion" class="panel" style="padding: 1.25rem;">
@@ -155,21 +156,21 @@ const score = computed(() => {
         v-if="currentQuestion.imageUrl"
         class="question-image"
         :src="currentQuestion.imageUrl"
-        alt="Imagen de apoyo para la pregunta"
+        :alt="t('Imagen de apoyo para la pregunta')"
       >
 
       <div class="section-title">
         <div>
-          <p class="muted">Pregunta {{ currentIndex + 1 }} de {{ examQuestions.length }}</p>
+          <p class="muted">{{ t('Pregunta {current} de {total}', { current: currentIndex + 1, total: examQuestions.length }) }}</p>
           <h2>{{ currentQuestion.prompt }}</h2>
         </div>
 
         <div class="inline-actions">
           <button class="btn small ghost" type="button" :disabled="currentIndex === 0" @click="currentIndex -= 1">
-            Anterior
+            {{ t('Anterior') }}
           </button>
           <button class="btn small ghost" type="button" :disabled="currentIndex === examQuestions.length - 1" @click="currentIndex += 1">
-            Siguiente
+            {{ t('Siguiente') }}
           </button>
         </div>
       </div>
@@ -196,10 +197,10 @@ const score = computed(() => {
 
       <div v-if="submitted" class="stack">
         <div class="banner" :class="isQuestionCorrect(currentQuestion) ? 'success' : 'warning'">
-          {{ isQuestionCorrect(currentQuestion) ? 'Respuesta correcta.' : 'Respuesta incorrecta.' }}
+          {{ t(isQuestionCorrect(currentQuestion) ? 'Respuesta correcta.' : 'Respuesta incorrecta.') }}
         </div>
         <div v-if="currentQuestion.explanation" class="banner success">
-          <strong>Explicación:</strong> {{ currentQuestion.explanation }}
+          <strong>{{ t('Explicación:') }}</strong> {{ currentQuestion.explanation }}
         </div>
       </div>
     </section>
@@ -207,22 +208,22 @@ const score = computed(() => {
     <section v-if="score" class="panel" style="padding: 1.25rem;">
       <div class="section-title">
         <div>
-          <h2>Resultado final</h2>
-          <p class="muted">Revisión rápida de aciertos y fallos.</p>
+          <h2>{{ t('Resultado final') }}</h2>
+          <p class="muted">{{ t('Revisión rápida de aciertos y fallos.') }}</p>
         </div>
       </div>
 
       <div class="stats-grid">
         <article class="stat-card">
-          <span class="muted">Aciertos</span>
+          <span class="muted">{{ t('Aciertos') }}</span>
           <strong>{{ score.correct }}</strong>
         </article>
         <article class="stat-card">
-          <span class="muted">Total</span>
+          <span class="muted">{{ t('Total') }}</span>
           <strong>{{ score.total }}</strong>
         </article>
         <article class="stat-card">
-          <span class="muted">Porcentaje</span>
+          <span class="muted">{{ t('Porcentaje') }}</span>
           <strong>{{ score.percentage }}%</strong>
         </article>
       </div>
@@ -237,11 +238,11 @@ const score = computed(() => {
             v-if="question.imageUrl"
             class="question-image compact"
             :src="question.imageUrl"
-            alt="Imagen de apoyo para la pregunta"
+            :alt="t('Imagen de apoyo para la pregunta')"
           >
           <div class="section-title">
             <p>{{ question.prompt }}</p>
-            <strong>{{ isQuestionCorrect(question) ? 'OK' : 'FAIL' }}</strong>
+            <strong>{{ t(isQuestionCorrect(question) ? 'OK' : 'FAIL') }}</strong>
           </div>
           <p v-if="question.explanation" class="muted" style="margin-bottom: 0;">{{ question.explanation }}</p>
         </article>

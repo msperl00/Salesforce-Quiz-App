@@ -3,6 +3,7 @@ import type { Question, Tag } from '~/types/quiz'
 import { questionTags, shuffledQuestions } from '~/utils/quiz.mjs'
 
 const api = useQuizApi()
+const { t } = useLanguage()
 
 const { data: allQuestions, pending, error, refresh } = await useQuestionBank(api)
 const tags = computed<Tag[]>(() => questionTags(allQuestions.value))
@@ -52,25 +53,25 @@ function previousQuestion() {
 <template>
   <div class="stack">
     <ExamHeading :exam-id="api.examId" />
-    <div v-if="pending" class="banner" role="status">Cargando preguntas...</div>
+    <div v-if="pending" class="banner" role="status">{{ t('Cargando preguntas...') }}</div>
     <div v-if="error" class="banner warning" role="alert">
-      No se pudieron cargar las preguntas.
-      <button class="btn ghost small" type="button" :disabled="pending" @click="refresh()">Reintentar</button>
+      {{ t('No se pudieron cargar las preguntas.') }}
+      <button class="btn ghost small" type="button" :disabled="pending" @click="refresh()">{{ t('Reintentar') }}</button>
     </div>
     <section class="panel" style="padding: 1.25rem;">
       <div class="section-title">
         <div>
-          <h2>Modo estudio</h2>
-          <p class="muted">Repaso libre con explicación visible solo cuando quieras.</p>
+          <h2>{{ t('Modo estudio') }}</h2>
+          <p class="muted">{{ t('Repaso libre con explicación visible solo cuando quieras.') }}</p>
         </div>
-        <p class="muted">{{ studyQuestions.length }} preguntas disponibles</p>
+        <p class="muted">{{ t(studyQuestions.length === 1 ? '1 pregunta disponible' : '{count} preguntas disponibles', { count: studyQuestions.length }) }}</p>
       </div>
 
       <div class="field-grid">
         <div class="field">
-          <label for="tag">Filtrar por etiqueta</label>
+          <label for="tag">{{ t('Filtrar por etiqueta') }}</label>
           <select id="tag" v-model="selectedTag">
-            <option value="">Todas</option>
+            <option value="">{{ t('Todas') }}</option>
             <option v-for="tag in tags" :key="tag.id" :value="tag.name">{{ tag.name }}</option>
           </select>
         </div>
@@ -78,7 +79,7 @@ function previousQuestion() {
         <div class="field">
           <label class="inline" style="margin-top: 2rem;">
             <input v-model="shuffleMode" type="checkbox">
-            Mezclar preguntas
+            {{ t('Mezclar preguntas') }}
           </label>
         </div>
       </div>
@@ -89,12 +90,12 @@ function previousQuestion() {
         v-if="currentQuestion.imageUrl"
         class="question-image"
         :src="currentQuestion.imageUrl"
-        alt="Imagen de apoyo para la pregunta"
+        :alt="t('Imagen de apoyo para la pregunta')"
       >
 
       <div class="section-title">
         <div>
-          <p class="muted" aria-live="polite">Pregunta {{ currentIndex + 1 }} de {{ studyQuestions.length }}</p>
+          <p class="muted" aria-live="polite">{{ t('Pregunta {current} de {total}', { current: currentIndex + 1, total: studyQuestions.length }) }}</p>
           <h2>{{ currentQuestion.prompt }}</h2>
         </div>
       </div>
@@ -106,7 +107,7 @@ function previousQuestion() {
           class="choice"
           :class="{ correct: reveal && answer.isCorrect }"
         >
-          <strong>{{ reveal && answer.isCorrect ? 'OK' : '?' }}</strong>
+          <strong>{{ reveal && answer.isCorrect ? t('OK') : '?' }}</strong>
           <span>{{ answer.text }}</span>
         </div>
       </div>
@@ -117,24 +118,24 @@ function previousQuestion() {
 
       <div v-if="reveal" class="stack" style="margin-top: 1rem;">
         <div v-if="currentQuestion.explanation" class="banner success">
-          <strong>Explicación:</strong> {{ currentQuestion.explanation }}
+          <strong>{{ t('Explicación:') }}</strong> {{ currentQuestion.explanation }}
         </div>
         <div v-if="currentQuestion.note" class="banner warning">
-          <strong>Nota:</strong> {{ currentQuestion.note }}
+          <strong>{{ t('Nota:') }}</strong> {{ currentQuestion.note }}
         </div>
       </div>
 
       <div class="actions" style="margin-top: 1rem;">
-        <button class="btn ghost" type="button" @click="previousQuestion">Anterior</button>
+        <button class="btn ghost" type="button" @click="previousQuestion">{{ t('Anterior') }}</button>
         <button class="btn primary" type="button" @click="reveal = !reveal">
-          {{ reveal ? 'Ocultar solución' : 'Mostrar solución' }}
+          {{ t(reveal ? 'Ocultar solución' : 'Mostrar solución') }}
         </button>
-        <button class="btn ghost" type="button" @click="nextQuestion">Siguiente</button>
+        <button class="btn ghost" type="button" @click="nextQuestion">{{ t('Siguiente') }}</button>
       </div>
     </section>
 
     <div v-else-if="!pending && !error" class="empty-state">
-      No hay preguntas para el filtro actual.
+      {{ t('No hay preguntas para el filtro actual.') }}
     </div>
   </div>
 </template>

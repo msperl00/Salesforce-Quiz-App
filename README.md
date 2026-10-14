@@ -26,6 +26,19 @@ App web simple para estudiar preguntas de certificaciones de Salesforce con una 
 - Vista de estudio
 - Vista tipo examen
 - Import/export JSON
+- Interfaz en español, inglés e italiano
+
+## Idioma de la interfaz
+
+El selector de la cabecera cambia menús, botones y mensajes sin reiniciar el simulacro.
+La elección se guarda en una cookie del navegador durante un año y también se aplica
+al iniciar sesión. Las preguntas, respuestas, explicaciones, etiquetas y nombres de
+examen conservan su contenido original; no se traducen ni se modifican en la base de datos.
+
+Las traducciones están en `utils/localization.mjs` y la preferencia compartida en
+`composables/useLanguage.ts`. No se necesitan servicios externos ni nuevas variables
+de entorno. Para añadir un texto de interfaz usa `t('Texto en español')` y añade sus
+versiones inglesa e italiana al diccionario.
 
 ## Arquitectura mínima
 

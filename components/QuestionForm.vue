@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Exam, Question, QuestionPayload } from '~/types/quiz'
+const { t } = useLanguage()
 
 const props = defineProps<{
   modelValue?: Question | null
@@ -136,8 +137,8 @@ function onSubmit() {
   <section class="panel" style="padding: 1.25rem;">
     <div class="section-title">
       <div>
-        <h2>{{ modelValue ? 'Editar pregunta' : 'Nueva pregunta' }}</h2>
-        <p class="muted">Una sola pantalla para crear y mantener el banco de preguntas.</p>
+        <h2>{{ t(modelValue ? 'Editar pregunta' : 'Nueva pregunta') }}</h2>
+        <p class="muted">{{ t('Una sola pantalla para crear y mantener el banco de preguntas.') }}</p>
       </div>
 
       <button
@@ -146,26 +147,26 @@ function onSubmit() {
         type="button"
         @click="emit('cancel')"
       >
-        Cancelar edición
+        {{ t('Cancelar edición') }}
       </button>
     </div>
 
     <form class="stack" @submit.prevent="onSubmit">
       <div class="field-grid">
         <div v-if="modelValue && exams?.length" class="field full">
-          <label for="question-exam">Examen de esta pregunta</label>
+          <label for="question-exam">{{ t('Examen de esta pregunta') }}</label>
           <select id="question-exam" v-model.number="form.examId">
             <option v-for="exam in exams" :key="exam.id" :value="exam.id">{{ exam.name }}</option>
           </select>
-          <small class="muted">Puedes moverla a otro examen al guardar.</small>
+          <small class="muted">{{ t('Puedes moverla a otro examen al guardar.') }}</small>
         </div>
         <div class="field full">
-          <label for="prompt">Pregunta</label>
+          <label for="prompt">{{ t('Pregunta') }}</label>
           <textarea id="prompt" v-model="form.prompt" required />
         </div>
 
         <div class="field full">
-          <label for="question-image">Imagen opcional</label>
+          <label for="question-image">{{ t('Imagen opcional') }}</label>
           <input
             id="question-image"
             ref="imageInput"
@@ -173,17 +174,17 @@ function onSubmit() {
             accept="image/png,image/jpeg,image/webp,image/gif"
             @change="selectImage"
           >
-          <small class="muted">PNG, JPG, WEBP o GIF. Máximo 2 MB.</small>
-          <p v-if="imageError" class="form-error">{{ imageError }}</p>
+          <small class="muted">{{ t('PNG, JPG, WEBP o GIF. Máximo 2 MB.') }}</small>
+          <p v-if="imageError" class="form-error">{{ t(imageError) }}</p>
 
           <div v-if="form.imageDataUrl" class="image-preview">
-            <img :src="form.imageDataUrl" alt="Vista previa de la pregunta">
-            <button class="btn danger small" type="button" @click="removeImage">Quitar imagen</button>
+            <img :src="form.imageDataUrl" :alt="t('Vista previa de la pregunta')">
+            <button class="btn danger small" type="button" @click="removeImage">{{ t('Quitar imagen') }}</button>
           </div>
         </div>
 
         <div class="field">
-          <label for="tags">Etiquetas</label>
+          <label for="tags">{{ t('Etiquetas') }}</label>
           <input
             id="tags"
             v-model="form.tagsText"
@@ -193,44 +194,44 @@ function onSubmit() {
         </div>
 
         <div class="field">
-          <label for="note">Nota rápida</label>
+          <label for="note">{{ t('Nota rápida') }}</label>
           <input
             id="note"
             v-model="form.note"
             type="text"
-            placeholder="Mnemotecnia o recordatorio"
+            :placeholder="t('Mnemotecnia o recordatorio')"
           />
         </div>
 
         <div class="field full">
-          <label for="explanation">Explicación</label>
+          <label for="explanation">{{ t('Explicación') }}</label>
           <textarea
             id="explanation"
             v-model="form.explanation"
-            placeholder="Por qué la respuesta correcta es la válida"
+            :placeholder="t('Por qué la respuesta correcta es la válida')"
           />
         </div>
       </div>
 
       <div class="stack">
         <div class="section-title">
-          <h3>Respuestas</h3>
-          <button class="btn small ghost" type="button" @click="addAnswer">Añadir respuesta</button>
+          <h3>{{ t('Respuestas') }}</h3>
+          <button class="btn small ghost" type="button" @click="addAnswer">{{ t('Añadir respuesta') }}</button>
         </div>
 
         <div class="answers-list">
           <div v-for="(answer, index) in form.answers" :key="index" class="answer-row">
             <input
               v-model="answer.text"
-              :aria-label="`Respuesta ${index + 1}`"
+              :aria-label="t('Respuesta {number}', { number: index + 1 })"
               required
               type="text"
-              placeholder="Texto de la respuesta"
+              :placeholder="t('Texto de la respuesta')"
             />
 
             <label class="inline">
               <input v-model="answer.isCorrect" type="checkbox">
-              Correcta
+              {{ t('Correcta') }}
             </label>
 
             <button
@@ -239,7 +240,7 @@ function onSubmit() {
               :disabled="form.answers.length <= 2"
               @click="removeAnswer(index)"
             >
-              Quitar
+              {{ t('Quitar') }}
             </button>
           </div>
         </div>
@@ -247,10 +248,10 @@ function onSubmit() {
 
       <div class="actions">
         <button class="btn primary" type="submit" :disabled="saving">
-          {{ saving ? 'Guardando...' : modelValue ? 'Guardar cambios' : 'Crear pregunta' }}
+          {{ t(saving ? 'Guardando...' : modelValue ? 'Guardar cambios' : 'Crear pregunta') }}
         </button>
         <button class="btn ghost" type="button" @click="resetForm(modelValue)">
-          Resetear
+          {{ t('Resetear') }}
         </button>
       </div>
     </form>

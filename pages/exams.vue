@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Exam } from '~/types/quiz'
+const { t } = useLanguage()
 const { data: account } = await useAccount()
 
 const { data, error, refresh } = await useFetch<{ exams: Exam[] }>('/api/exams')
@@ -40,39 +41,39 @@ async function save() {
 <template>
   <div class="stack">
     <section class="panel exam-panel">
-      <h2>Mis exámenes</h2>
-      <p class="muted">Elige qué certificación preparar. Cada examen tiene sus propias preguntas y temas.</p>
+      <h2>{{ t('Mis exámenes') }}</h2>
+      <p class="muted">{{ t('Elige qué certificación preparar. Cada examen tiene sus propias preguntas y temas.') }}</p>
       <form v-if="account?.user?.role === 'admin'" class="exam-form" @submit.prevent="save">
         <div class="field">
-          <label for="exam-name">{{ editingId ? 'Renombrar examen' : 'Nuevo examen' }}</label>
-          <input id="exam-name" v-model="name" required maxlength="120" placeholder="Por ejemplo, Platform Developer I" :disabled="saving">
+          <label for="exam-name">{{ t(editingId ? 'Renombrar examen' : 'Nuevo examen') }}</label>
+          <input id="exam-name" v-model="name" required maxlength="120" :placeholder="t('Por ejemplo, Platform Developer I')" :disabled="saving">
         </div>
         <button class="btn primary" type="submit" :disabled="saving || !name.trim()">
-          {{ saving ? 'Guardando...' : editingId ? 'Guardar nombre' : 'Crear examen' }}
+          {{ t(saving ? 'Guardando...' : editingId ? 'Guardar nombre' : 'Crear examen') }}
         </button>
-        <button v-if="editingId" class="btn ghost" type="button" :disabled="saving" @click="reset">Cancelar</button>
+        <button v-if="editingId" class="btn ghost" type="button" :disabled="saving" @click="reset">{{ t('Cancelar') }}</button>
       </form>
-      <p v-if="message" role="alert" class="form-error">{{ message }}</p>
+      <p v-if="message" role="alert" class="form-error">{{ t(message) }}</p>
     </section>
 
     <div v-if="error" class="banner warning" role="alert">
-      No se pudieron cargar los exámenes.
-      <button class="btn ghost small" @click="refresh()">Reintentar</button>
+      {{ t('No se pudieron cargar los exámenes.') }}
+      <button class="btn ghost small" @click="refresh()">{{ t('Reintentar') }}</button>
     </div>
     <div class="exam-grid">
       <article v-for="exam in data?.exams" :key="exam.id" class="panel exam-panel stack">
         <div>
           <h2>{{ exam.name }}</h2>
-          <p class="muted">{{ exam.questionCount }} {{ exam.questionCount === 1 ? 'pregunta' : 'preguntas' }}</p>
+          <p class="muted">{{ exam.questionCount }} {{ t(exam.questionCount === 1 ? 'pregunta' : 'preguntas') }}</p>
         </div>
         <div class="actions">
-          <NuxtLink class="btn primary" :to="{ path: '/', query: { examId: exam.id } }">Preguntas</NuxtLink>
-          <NuxtLink class="btn ghost" :to="{ path: '/study', query: { examId: exam.id } }">Estudiar</NuxtLink>
-          <NuxtLink class="btn ghost" :to="{ path: '/exam', query: { examId: exam.id } }">Simulacro</NuxtLink>
-          <button v-if="account?.user?.role === 'admin'" class="btn ghost small" :disabled="saving" @click="edit(exam)">Renombrar</button>
+          <NuxtLink class="btn primary" :to="{ path: '/', query: { examId: exam.id } }">{{ t('Preguntas') }}</NuxtLink>
+          <NuxtLink class="btn ghost" :to="{ path: '/study', query: { examId: exam.id } }">{{ t('Estudiar') }}</NuxtLink>
+          <NuxtLink class="btn ghost" :to="{ path: '/exam', query: { examId: exam.id } }">{{ t('Simulacro') }}</NuxtLink>
+          <button v-if="account?.user?.role === 'admin'" class="btn ghost small" :disabled="saving" @click="edit(exam)">{{ t('Renombrar') }}</button>
         </div>
       </article>
     </div>
-    <p v-if="data && !data.exams.length" class="empty-state">Crea tu primer examen para añadir preguntas.</p>
+    <p v-if="data && !data.exams.length" class="empty-state">{{ t('Crea tu primer examen para añadir preguntas.') }}</p>
   </div>
 </template>

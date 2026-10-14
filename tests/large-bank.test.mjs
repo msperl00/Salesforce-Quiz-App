@@ -25,8 +25,9 @@ test('415-question list, filters, export and SSR stay complete and exam-scoped',
   let logs = ''
   server.stdout.on('data', chunk => { logs += chunk })
   server.stderr.on('data', chunk => { logs += chunk })
-  const get = async endpoint => {
-    const response = await fetch(base + endpoint, { signal: AbortSignal.timeout(20000) })
+  const get = async (endpoint, language) => {
+    const response = await fetch(base + endpoint, { signal: AbortSignal.timeout(20000),
+      headers: language ? { cookie: `quiz-language=${language}` } : {} })
     assert.equal(response.status, 200, await response.clone().text())
     return response
   }
@@ -94,6 +95,24 @@ test('415-question list, filters, export and SSR stay complete and exam-scoped',
     const smallExam = await (await get('/exam?examId=3')).text()
     assert.ok(smallExam.includes('Todas (1)'))
     assert.match(smallExam, /<input(?=[^>]*id="count")(?=[^>]*value="1")[^>]*>/)
+    for (const [language, labels] of [
+      ['en', ['All (415)', 'Use all (415)', 'Start exam', 'Show answer']],
+      ['it', ['Tutte (415)', 'Usa tutte (415)', 'Inizia la simulazione', 'Mostra la soluzione']]
+    ]) {
+      const localizedExam = await (await get('/exam?examId=2', language)).text()
+      assert.match(localizedExam, new RegExp(`<html[^>]*lang="${language}"`))
+      for (const text of labels.slice(0, 3)) assert.ok(localizedExam.includes(text), text)
+      const localizedStudy = await (await get('/study?examId=2', language)).text()
+      assert.ok(localizedStudy.includes(labels[3]))
+      assert.ok(localizedStudy.includes('1. Fixture question'))
+      assert.ok(localizedStudy.includes('Answer 1:0'))
+      assert.ok(localizedStudy.includes('Explanation 1'))
+    }
+    const spanishAgain = await (await get('/exam?examId=2')).text()
+    assert.match(spanishAgain, /<html[^>]*lang="es"/)
+    assert.ok(spanishAgain.includes('Empezar examen'))
+    const invalidLanguage = await (await get('/exam?examId=2', 'de')).text()
+    assert.match(invalidLanguage, /<html[^>]*lang="es"/)
   } finally {
     if (server.exitCode === null && server.signalCode === null) {
       const exited = once(server, 'exit')

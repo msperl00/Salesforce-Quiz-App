@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Question } from '~/types/quiz'
+const { t } = useLanguage()
 
 const props = defineProps<{
   questions: Question[]
@@ -23,11 +24,11 @@ const emit = defineEmits<{
   <section class="panel" style="padding: 1.25rem;">
     <div class="section-title">
       <div>
-        <h2>Banco de preguntas</h2>
-        <p class="muted">Edición directa, sin pantallas extra.</p>
+        <h2>{{ t('Banco de preguntas') }}</h2>
+        <p class="muted">{{ t('Edición directa, sin pantallas extra.') }}</p>
       </div>
 
-      <p class="muted">{{ questions.length }} total</p>
+      <p class="muted">{{ t('{count} total', { count: questions.length }) }}</p>
     </div>
 
     <div v-if="questions.length" class="question-list">
@@ -37,20 +38,20 @@ const emit = defineEmits<{
           class="question-image compact"
           :src="question.imageUrl"
           loading="lazy"
-          alt="Imagen de apoyo para la pregunta"
+          :alt="t('Imagen de apoyo para la pregunta')"
         >
 
         <div class="question-header">
           <div class="stack" style="gap: 0.4rem;">
             <h3>{{ question.prompt }}</h3>
             <p class="muted">
-              {{ question.answers.filter(answer => answer.isCorrect).length }} correcta(s)
+              {{ t('{count} correcta(s)', { count: question.answers.filter(answer => answer.isCorrect).length }) }}
             </p>
           </div>
 
           <div v-if="canEdit" class="inline-actions">
-            <button class="btn small ghost" type="button" :disabled="busy" @click="emit('edit', question)">Editar</button>
-            <button class="btn small danger" type="button" :disabled="busy" @click="emit('remove', question)">Borrar</button>
+            <button class="btn small ghost" type="button" :disabled="busy" @click="emit('edit', question)">{{ t('Editar') }}</button>
+            <button class="btn small danger" type="button" :disabled="busy" @click="emit('remove', question)">{{ t('Borrar') }}</button>
           </div>
         </div>
 
@@ -77,13 +78,13 @@ const emit = defineEmits<{
     </div>
 
     <div v-if="questions.length > pageSize" class="actions" style="margin-top: 1rem;">
-      <button class="btn ghost" type="button" :disabled="page === 1 || busy" @click="page -= 1">Anterior</button>
-      <span class="muted" aria-live="polite">Pagina {{ page }} de {{ pageCount }}</span>
-      <button class="btn ghost" type="button" :disabled="page === pageCount || busy" @click="page += 1">Siguiente</button>
+      <button class="btn ghost" type="button" :disabled="page === 1 || busy" @click="page -= 1">{{ t('Anterior') }}</button>
+      <span class="muted" aria-live="polite">{{ t('Pagina {current} de {total}', { current: page, total: pageCount }) }}</span>
+      <button class="btn ghost" type="button" :disabled="page === pageCount || busy" @click="page += 1">{{ t('Siguiente') }}</button>
     </div>
 
     <div v-if="!questions.length" class="empty-state">
-      No hay preguntas todavía. Crea la primera desde el panel de la izquierda.
+      {{ t('No hay preguntas todavía. Crea la primera desde el panel de la izquierda.') }}
     </div>
   </section>
 </template>

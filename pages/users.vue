@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useLanguage()
 const email = ref('')
 const link = ref('')
 const message = ref('')
@@ -17,14 +18,14 @@ async function invite() {
 </script>
 <template>
   <section v-if="account?.user?.role === 'admin'" class="panel exam-panel auth-panel">
-    <h2>Invitar a un amigo</h2>
-    <p class="muted">Podrá consultar el banco compartido, estudiar y hacer simulacros. Solo tú administras las preguntas.</p>
+    <h2>{{ t('Invitar a un amigo') }}</h2>
+    <p class="muted">{{ t('Podrá consultar el banco compartido, estudiar y hacer simulacros. Solo tú administras las preguntas.') }}</p>
     <form class="stack" @submit.prevent="invite">
-      <div class="field"><label for="email">Correo del invitado</label><input id="email" v-model="email" type="email" required></div>
-      <button class="btn primary" :disabled="busy">Crear enlace de invitación</button>
-      <p v-if="message" class="form-error" role="alert">{{ message }}</p>
-      <div v-if="link" class="field"><label for="invite-link">Comparte este enlace en privado. Caduca en 48 horas.</label><textarea id="invite-link" :value="link" readonly /></div>
+      <div class="field"><label for="email">{{ t('Correo del invitado') }}</label><input id="email" v-model="email" type="email" required></div>
+      <button class="btn primary" :disabled="busy">{{ t('Crear enlace de invitación') }}</button>
+      <p v-if="message" class="form-error" role="alert">{{ t(message) }}</p>
+      <div v-if="link" class="field"><label for="invite-link">{{ t('Comparte este enlace en privado. Caduca en 48 horas.') }}</label><textarea id="invite-link" :value="link" readonly /></div>
     </form>
   </section>
-  <p v-else>Esta sección es solo para el administrador.</p>
+  <p v-else>{{ t('Esta sección es solo para el administrador.') }}</p>
 </template>
