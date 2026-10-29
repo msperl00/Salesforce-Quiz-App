@@ -15,6 +15,11 @@ const discardRequested = ref(false)
 const currentIndex = ref(0)
 const answersByQuestion = ref<Record<number, number[]>>({})
 const examQuestions = ref<Question[]>([])
+const questionHeading = ref<HTMLHeadingElement | null>(null)
+const scoreHeading = ref<HTMLHeadingElement | null>(null)
+const countInput = ref<HTMLInputElement | null>(null)
+const discardTrigger = ref<HTMLButtonElement | null>(null)
+const cancelDiscard = ref<HTMLButtonElement | null>(null)
 
 const currentQuestion = computed(() => examQuestions.value[currentIndex.value] || null)
 const pool = computed(() => selectedTag.value
@@ -41,6 +46,7 @@ function startExam() {
   started.value = true
   submitted.value = false
   discardRequested.value = false
+  nextTick(() => questionHeading.value?.focus({ preventScroll: true }))
 }
 
 function discardExam() {
@@ -51,6 +57,22 @@ function discardExam() {
   answersByQuestion.value = {}
   currentIndex.value = 0
   discardRequested.value = false
+  nextTick(() => countInput.value?.focus())
+}
+
+function requestDiscard() {
+  discardRequested.value = true
+  nextTick(() => cancelDiscard.value?.focus())
+}
+
+function keepExam() {
+  discardRequested.value = false
+  nextTick(() => discardTrigger.value?.focus())
+}
+
+function submitExam() {
+  submitted.value = true
+  nextTick(() => scoreHeading.value?.focus())
 }
 
 function toggleAnswer(questionId: number, answerId: number | undefined, checked: boolean) {
@@ -96,23 +118,23 @@ const score = computed(() => {
 </script>
 
 <template>
-  <div class="stack">
+  <div class="stack reading-page">
     <ExamHeading :exam-id="api.examId" />
     <div v-if="pending" class="banner" role="status">{{ t('Cargando preguntas...') }}</div>
     <div v-if="error" class="banner warning" role="alert">
       {{ t('No se pudieron cargar las preguntas.') }}
       <button class="btn ghost small" type="button" :disabled="pending" @click="refresh()">{{ t('Reintentar') }}</button>
     </div>
-    <section class="panel" style="padding: 1.25rem;">
+    <section class="panel exam-settings">
       <div class="section-title">
         <div>
           <h2>{{ t('Simulacro') }}</h2>
-          <p class="muted">{{ t('Elige cuántas preguntas quieres y genera un simulacro aleatorio, sin repeticiones.') }}</p>
+          <p v-if="!inProgress" class="muted">{{ t('Elige cuántas preguntas quieres y genera un simulacro aleatorio, sin repeticiones.') }}</p>
         </div>
-        <p class="muted" role="status" aria-live="polite">{{ t(pool.length === 1 ? '1 pregunta disponible' : '{count} preguntas disponibles', { count: pool.length }) }}</p>
+        <p class="muted" role="status" aria-live="polite">{{ inProgress ? t('{count} preguntas', { count: examQuestions.length }) : t(pool.length === 1 ? '1 pregunta disponible' : '{count} preguntas disponibles', { count: pool.length }) }}</p>
       </div>
 
-      <div class="field-grid">
+      <div v-show="!inProgress" class="field-grid">
         <div class="field">
           <label for="tag">{{ t('Etiqueta') }}</label>
           <select id="tag" v-model="selectedTag" :disabled="started && !submitted">
@@ -125,6 +147,7 @@ const score = computed(() => {
           <label for="count">{{ t('Número de preguntas del simulacro') }}</label>
           <input
             id="count"
+            ref="countInput"
             v-model.number="desiredCount"
             min="1"
             :max="pool.length || 1"
@@ -158,9 +181,10 @@ const score = computed(() => {
         <button v-if="!inProgress" class="btn primary" type="button" :disabled="pending || !validCount" @click="startExam">
           {{ t(started ? 'Crear otro simulacro aleatorio' : 'Crear simulacro aleatorio') }}
         </button>
-        <button class="btn ghost" type="button" :disabled="pending || (started && !submitted)" @click="refresh()">{{ t('Actualizar preguntas') }}</button>
+        <button v-if="!inProgress" class="btn ghost" type="button" :disabled="pending" @click="refresh()">{{ t('Actualizar preguntas') }}</button>
         <button
           class="btn ghost"
+          v-if="!inProgress"
           type="button"
           :disabled="pending || !pool.length || (started && !submitted)"
           @click="desiredCount = pool.length"
@@ -168,20 +192,12 @@ const score = computed(() => {
           {{ t('Usar todas ({count})', { count: pool.length }) }}
         </button>
 
-        <button
-          v-if="started && !submitted"
-          class="btn primary"
-          type="button"
-          @click="submitted = true"
-        >
-          {{ t('Corregir') }}
-        </button>
-        <button v-if="inProgress" class="btn ghost" type="button" :aria-expanded="discardRequested" aria-controls="discard-confirmation" @click="discardRequested = true">{{ t('Descartar simulacro') }}</button>
+        <button v-if="inProgress" ref="discardTrigger" class="btn ghost" type="button" :aria-expanded="discardRequested" aria-controls="discard-confirmation" @click="requestDiscard">{{ t('Descartar simulacro') }}</button>
       </div>
       <div v-if="inProgress && discardRequested" id="discard-confirmation" class="banner warning" role="alert" style="margin-top: 1rem;">
         <p>{{ t('Se perderán las respuestas de este simulacro. ¿Descartarlo y cambiar la configuración?') }}</p>
         <div class="actions">
-          <button class="btn ghost" type="button" @click="discardRequested = false">{{ t('Cancelar') }}</button>
+          <button ref="cancelDiscard" class="btn ghost" type="button" @click="keepExam">{{ t('Cancelar') }}</button>
           <button class="btn danger" type="button" @click="discardExam">{{ t('Descartar y cambiar configuración') }}</button>
         </div>
       </div>
@@ -191,7 +207,13 @@ const score = computed(() => {
       <p v-if="!pending && !error && !pool.length" class="empty-state">{{ t('No hay preguntas para este examen y filtro. Añádelas desde Preguntas.') }}</p>
     </section>
 
-    <section v-if="started && currentQuestion" class="panel" style="padding: 1.25rem;">
+    <section v-if="started && currentQuestion" class="panel session-card">
+      <div class="session-controls" role="group" :aria-label="t('Navegación de preguntas')">
+        <button class="btn ghost" type="button" :disabled="currentIndex === 0" @click="currentIndex -= 1">{{ t('Anterior') }}</button>
+        <button v-if="!submitted" class="btn primary" type="button" @click="submitExam">{{ t('Corregir') }}</button>
+        <span v-else class="session-position">{{ currentIndex + 1 }} / {{ examQuestions.length }}</span>
+        <button class="btn ghost" type="button" :disabled="currentIndex === examQuestions.length - 1" @click="currentIndex += 1">{{ t('Siguiente') }}</button>
+      </div>
       <img
         v-if="currentQuestion.imageUrl"
         class="question-image"
@@ -201,17 +223,8 @@ const score = computed(() => {
 
       <div class="section-title">
         <div>
-          <p class="muted">{{ t('Pregunta {current} de {total}', { current: currentIndex + 1, total: examQuestions.length }) }}</p>
-          <h2>{{ currentQuestion.prompt }}</h2>
-        </div>
-
-        <div class="inline-actions">
-          <button class="btn small ghost" type="button" :disabled="currentIndex === 0" @click="currentIndex -= 1">
-            {{ t('Anterior') }}
-          </button>
-          <button class="btn small ghost" type="button" :disabled="currentIndex === examQuestions.length - 1" @click="currentIndex += 1">
-            {{ t('Siguiente') }}
-          </button>
+          <p class="muted" aria-live="polite">{{ t('Pregunta {current} de {total}', { current: currentIndex + 1, total: examQuestions.length }) }}</p>
+          <h2 ref="questionHeading" tabindex="-1">{{ currentQuestion.prompt }}</h2>
         </div>
       </div>
 
@@ -231,7 +244,7 @@ const score = computed(() => {
             :checked="(answersByQuestion[currentQuestion.id] || []).includes(answer.id || -1)"
             @change="toggleAnswer(currentQuestion.id, answer.id, ($event.target as HTMLInputElement).checked)"
           >
-          <span>{{ answer.text }}</span>
+          <span>{{ answer.text }}<span v-if="submitted && (answer.isCorrect || (answersByQuestion[currentQuestion.id] || []).includes(answer.id || -1))" class="answer-status">{{ t(answer.isCorrect ? 'Correcta' : 'Tu respuesta') }}</span></span>
         </label>
       </div>
 
@@ -248,7 +261,7 @@ const score = computed(() => {
     <section v-if="score" class="panel" style="padding: 1.25rem;">
       <div class="section-title">
         <div>
-          <h2>{{ t('Resultado final') }}</h2>
+          <h2 ref="scoreHeading" tabindex="-1">{{ t('Resultado final') }}</h2>
           <p class="muted">{{ t('Revisión rápida de aciertos y fallos.') }}</p>
         </div>
       </div>

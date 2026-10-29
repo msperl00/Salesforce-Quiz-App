@@ -8,16 +8,28 @@ const name = ref('')
 const editingId = ref<number | null>(null)
 const saving = ref(false)
 const message = ref('')
+const showForm = ref(false)
+const nameInput = ref<HTMLInputElement | null>(null)
+const newExamTrigger = ref<HTMLButtonElement | null>(null)
+
+function createExam() {
+  showForm.value = true
+  nextTick(() => nameInput.value?.focus())
+}
 
 function edit(exam: Exam) {
   editingId.value = exam.id
   name.value = exam.name
   message.value = ''
+  showForm.value = true
+  nextTick(() => nameInput.value?.focus())
 }
 
 function reset() {
   editingId.value = null
   name.value = ''
+  showForm.value = false
+  nextTick(() => newExamTrigger.value?.focus())
 }
 
 async function save() {
@@ -44,15 +56,16 @@ async function save() {
     <section class="panel exam-panel">
       <h2>{{ t('Mis exámenes') }}</h2>
       <p class="muted">{{ t('Elige qué certificación preparar. Cada examen tiene sus propias preguntas y temas.') }}</p>
-      <form v-if="account?.user?.role === 'admin'" class="exam-form" @submit.prevent="save">
+      <button v-if="account?.user?.role === 'admin' && !showForm" ref="newExamTrigger" class="btn ghost" type="button" @click="createExam">{{ t('Nuevo examen') }}</button>
+      <form v-if="account?.user?.role === 'admin' && showForm" class="exam-form" @submit.prevent="save">
         <div class="field">
           <label for="exam-name">{{ t(editingId ? 'Renombrar examen' : 'Nuevo examen') }}</label>
-          <input id="exam-name" v-model="name" required maxlength="120" :placeholder="t('Por ejemplo, Platform Developer I')" :disabled="saving">
+          <input id="exam-name" ref="nameInput" v-model="name" required maxlength="120" :placeholder="t('Por ejemplo, Platform Developer I')" :disabled="saving">
         </div>
         <button class="btn primary" type="submit" :disabled="saving || !name.trim()">
           {{ t(saving ? 'Guardando...' : editingId ? 'Guardar nombre' : 'Crear examen') }}
         </button>
-        <button v-if="editingId" class="btn ghost" type="button" :disabled="saving" @click="reset">{{ t('Cancelar') }}</button>
+        <button class="btn ghost" type="button" :disabled="saving" @click="reset">{{ t('Cancelar') }}</button>
       </form>
       <p v-if="message" role="alert" class="form-error">{{ t(message) }}</p>
     </section>
@@ -62,16 +75,18 @@ async function save() {
       <button class="btn ghost small" @click="refresh()">{{ t('Reintentar') }}</button>
     </div>
     <div class="exam-grid">
-      <article v-for="exam in data?.exams" :key="exam.id" class="panel exam-panel stack">
-        <div>
-          <h2>{{ exam.name }}</h2>
-          <p class="muted">{{ exam.questionCount }} {{ t(exam.questionCount === 1 ? 'pregunta' : 'preguntas') }}</p>
+      <article v-for="exam in data?.exams" :key="exam.id" class="panel exam-panel exam-card">
+        <div class="exam-card-header">
+          <div>
+            <h2>{{ exam.name }}</h2>
+            <p class="muted">{{ exam.questionCount }} {{ t(exam.questionCount === 1 ? 'pregunta' : 'preguntas') }}</p>
+          </div>
+          <button v-if="account?.user?.role === 'admin'" class="btn ghost small" :disabled="saving" :aria-label="t('Renombrar {name}', { name: exam.name })" @click="edit(exam)">{{ t('Renombrar') }}</button>
         </div>
-        <div class="actions">
+        <div class="exam-card-actions">
           <NuxtLink class="btn primary" :to="{ path: '/', query: { examId: exam.id } }">{{ t('Preguntas') }}</NuxtLink>
           <NuxtLink class="btn ghost" :to="{ path: '/study', query: { examId: exam.id } }">{{ t('Estudiar') }}</NuxtLink>
           <NuxtLink class="btn ghost" :to="{ path: '/exam', query: { examId: exam.id } }">{{ t('Simulacro') }}</NuxtLink>
-          <button v-if="account?.user?.role === 'admin'" class="btn ghost small" :disabled="saving" @click="edit(exam)">{{ t('Renombrar') }}</button>
         </div>
       </article>
     </div>

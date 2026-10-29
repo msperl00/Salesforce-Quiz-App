@@ -10,6 +10,13 @@ const { data: examsData } = await useFetch('/api/exams')
 const selectedTag = ref('')
 const search = ref('')
 const editingQuestion = ref<Question | null>(null)
+const showEditor = ref(false)
+const questionEditor = ref<HTMLElement | null>(null)
+function toggleEditor() {
+  const wasOpen = showEditor.value || Boolean(editingQuestion.value)
+  showEditor.value = !wasOpen
+  if (wasOpen) editingQuestion.value = null
+}
 const saving = ref(false)
 const loading = ref(false)
 const message = ref<{ type: 'success' | 'warning', text: string, values?: Record<string, string | number> } | null>(null)
@@ -90,6 +97,8 @@ async function removeQuestion(question: Question) {
 async function editQuestion(question: Question) {
   try {
     editingQuestion.value = (await $fetch<{ question: Question }>(`/api/questions/${question.id}`)).question
+    await nextTick()
+    questionEditor.value?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
   } catch {
     message.value = { type: 'warning', text: 'No se pudo cargar la pregunta.' }
   }
@@ -235,7 +244,8 @@ const stats = computed(() => {
           {{ t(exporting ? 'Exportando...' : 'Exportar JSON') }}
         </button>
         <div v-if="account?.user?.role === 'admin'" class="pill-input">
-          <input type="file" accept="application/json" :disabled="importing" @change="importFile = ($event.target as HTMLInputElement).files?.[0] || null">
+          <label class="sr-only" for="bank-import">{{ t('Archivo JSON de preguntas') }}</label>
+          <input id="bank-import" type="file" accept="application/json" :disabled="importing" @change="importFile = ($event.target as HTMLInputElement).files?.[0] || null">
           <button class="btn ghost" type="button" :disabled="importing || saving || deleting" @click="importJson(false)">{{ t(importing ? 'Importando...' : 'Importar sumando') }}</button>
           <button class="btn danger" type="button" :disabled="importing || saving || deleting" @click="importJson(true)">{{ t('Importar reemplazando') }}</button>
         </div>
@@ -243,15 +253,19 @@ const stats = computed(() => {
     </section>
 
     <div :class="account?.user?.role === 'admin' ? 'page-grid' : 'stack'">
-      <QuestionForm
-        v-if="account?.user?.role === 'admin'"
-        :key="formVersion"
-        :model-value="editingQuestion"
-        :saving="saving"
-        :exams="examsData?.exams"
-        @cancel="editingQuestion = null"
-        @save="saveQuestion"
-      />
+      <section v-if="account?.user?.role === 'admin'" ref="questionEditor" class="question-editor" :class="{ 'is-open': showEditor || editingQuestion }">
+        <button class="btn ghost editor-toggle" type="button" :aria-expanded="Boolean(showEditor || editingQuestion)" aria-controls="question-editor-content" @click="toggleEditor">{{ t(showEditor || editingQuestion ? 'Ocultar formulario' : 'Nueva pregunta') }}</button>
+        <div id="question-editor-content" class="editor-content">
+          <QuestionForm
+            :key="formVersion"
+            :model-value="editingQuestion"
+            :saving="saving"
+            :exams="examsData?.exams"
+            @cancel="editingQuestion = null"
+            @save="saveQuestion"
+          />
+        </div>
+      </section>
 
       <QuestionList
         :can-edit="account?.user?.role === 'admin'"

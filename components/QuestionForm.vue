@@ -230,7 +230,7 @@ function onSubmit() {
             />
 
             <label class="inline">
-              <input v-model="answer.isCorrect" type="checkbox">
+              <input v-model="answer.isCorrect" type="checkbox" :aria-label="t('Respuesta {number}: correcta', { number: index + 1 })">
               {{ t('Correcta') }}
             </label>
 
@@ -238,6 +238,7 @@ function onSubmit() {
               class="btn danger small"
               type="button"
               :disabled="form.answers.length <= 2"
+              :aria-label="t('Quitar respuesta {number}', { number: index + 1 })"
               @click="removeAnswer(index)"
             >
               {{ t('Quitar') }}

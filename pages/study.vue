@@ -12,6 +12,7 @@ const currentIndex = ref(0)
 const reveal = ref(false)
 const shuffleMode = ref(false)
 const studyQuestions = ref<Question[]>([])
+const showFilters = ref(false)
 
 function rebuildStudyQuestions() {
   const filtered = selectedTag.value
@@ -51,45 +52,46 @@ function previousQuestion() {
 </script>
 
 <template>
-  <div class="stack">
+  <div class="stack reading-page">
     <ExamHeading :exam-id="api.examId" />
     <div v-if="pending" class="banner" role="status">{{ t('Cargando preguntas...') }}</div>
     <div v-if="error" class="banner warning" role="alert">
       {{ t('No se pudieron cargar las preguntas.') }}
       <button class="btn ghost small" type="button" :disabled="pending" @click="refresh()">{{ t('Reintentar') }}</button>
     </div>
-    <section class="panel" style="padding: 1.25rem;">
+    <section class="panel study-settings" :class="{ 'filters-open': showFilters }">
       <div class="section-title">
         <div>
           <h2>{{ t('Modo estudio') }}</h2>
-          <p class="muted">{{ t('Repaso libre con explicación visible solo cuando quieras.') }}</p>
+          <p class="muted study-description">{{ t('Repaso libre con explicación visible solo cuando quieras.') }}</p>
+          <p class="muted question-availability">{{ t(studyQuestions.length === 1 ? '1 pregunta disponible' : '{count} preguntas disponibles', { count: studyQuestions.length }) }}</p>
         </div>
-        <div class="inline-actions">
-          <p class="muted">{{ t(studyQuestions.length === 1 ? '1 pregunta disponible' : '{count} preguntas disponibles', { count: studyQuestions.length }) }}</p>
-          <button class="btn ghost small" type="button" :disabled="pending" @click="refresh()">{{ t('Actualizar preguntas') }}</button>
-        </div>
+        <button class="btn ghost small filters-toggle" type="button" :aria-expanded="showFilters" aria-controls="study-filters" @click="showFilters = !showFilters">{{ t('Opciones') }}</button>
       </div>
 
-      <div class="field-grid">
-        <div class="field">
-          <label for="tag">{{ t('Filtrar por etiqueta') }}</label>
-          <select id="tag" v-model="selectedTag">
-            <option value="">{{ t('Todas') }}</option>
-            <option v-for="tag in tags" :key="tag.id" :value="tag.name">{{ tag.name }}</option>
-          </select>
-        </div>
+      <div id="study-filters" class="study-filters">
+        <div class="field-grid">
+          <div class="field">
+            <label for="tag">{{ t('Filtrar por etiqueta') }}</label>
+            <select id="tag" v-model="selectedTag">
+              <option value="">{{ t('Todas') }}</option>
+              <option v-for="tag in tags" :key="tag.id" :value="tag.name">{{ tag.name }}</option>
+            </select>
+          </div>
 
-        <div class="field checkbox-field">
-          <label class="inline">
-            <input v-model="shuffleMode" type="checkbox">
-            {{ t('Mezclar preguntas') }}
-          </label>
+          <div class="field checkbox-field">
+            <label class="inline">
+              <input v-model="shuffleMode" type="checkbox">
+              {{ t('Mezclar preguntas') }}
+            </label>
+          </div>
         </div>
+        <button class="btn ghost small refresh-questions" type="button" :disabled="pending" @click="refresh()">{{ t('Actualizar preguntas') }}</button>
       </div>
     </section>
 
     <section v-if="currentQuestion" class="study-card panel">
-      <div class="study-controls" role="group" :aria-label="t('Navegación de preguntas')">
+      <div class="study-controls session-controls" role="group" :aria-label="t('Navegación de preguntas')">
         <button class="btn ghost" type="button" @click="previousQuestion">{{ t('Anterior') }}</button>
         <button class="btn primary" type="button" @click="reveal = !reveal">
           {{ t(reveal ? 'Ocultar solución' : 'Mostrar solución') }}

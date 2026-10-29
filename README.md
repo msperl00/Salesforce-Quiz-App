@@ -64,6 +64,18 @@ entre simulacros distintos, pues cada sorteo es independiente.
 Durante una sesión la configuración está bloqueada. Descartarla requiere confirmación dentro de la página
 y solo borra las respuestas temporales de esa sesión, nunca preguntas del banco.
 
+## Revisión responsive y accesibilidad
+
+La interfaz conserva el zoom del navegador, inputs de al menos 16 px, foco visible,
+un enlace para saltar al contenido y áreas táctiles de 44 px o más. Los colores de
+texto y los bordes de formulario se comprueban con pruebas de contraste.
+En móvil, Opciones despliega los filtros de estudio; el menú Cuenta contiene las
+acciones de cuenta. Los controles inferiores reservan espacio y respetan las zonas
+seguras de iOS; en ventanas de poca altura vuelven al flujo normal para no tapar texto.
+Las comprobaciones de navegador usan tamaños equivalentes a iPhone 16 Pro (402×874),
+iPad (820×1180 y horizontal) y Mac (1440×900), además de 320 px para reflujo. Esto no
+sustituye pruebas con Safari/VoiceOver y dispositivos físicos, ni certifica WCAG.
+
 ## Arquitectura mínima
 
 - `pages/`: interfaz web

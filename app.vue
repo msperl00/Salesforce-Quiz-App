@@ -7,6 +7,17 @@ useHead(() => ({
   title: `${t(pageNames[route.path] || 'Exámenes')} | Salesforce Quiz`
 }))
 const { data: account } = await useAccount()
+const accountMenu = ref<HTMLDetailsElement | null>(null)
+function closeAccountMenu() {
+  accountMenu.value?.removeAttribute('open')
+  accountMenu.value?.querySelector('summary')?.focus()
+}
+function leaveAccountMenu(event: FocusEvent) {
+  if (!(event.relatedTarget instanceof Node) || !accountMenu.value?.contains(event.relatedTarget)) {
+    accountMenu.value?.removeAttribute('open')
+  }
+}
+watch(() => route.fullPath, () => accountMenu.value?.removeAttribute('open'))
 async function logout() {
   await $fetch('/api/auth/logout', { method: 'POST', body: {} })
   window.location.assign('/login')
@@ -16,6 +27,7 @@ const examQuery = computed(() => ({ examId: route.query.examId }))
 
 <template>
   <div class="app-shell">
+    <a class="skip-link" href="#main-content">{{ t('Saltar al contenido') }}</a>
     <NuxtLoadingIndicator color="#376a5b" />
     <header class="topbar">
       <NuxtLink class="brand" to="/exams">
@@ -26,29 +38,41 @@ const examQuery = computed(() => ({ examId: route.query.examId }))
         </div>
       </NuxtLink>
 
-      <div class="header-controls">
+      <div class="header-tools">
         <div class="field language-switch">
-          <label for="interface-language">{{ t('Idioma') }}</label>
+          <label class="sr-only" for="interface-language">{{ t('Idioma') }}</label>
           <select id="interface-language" :value="language" @change="setLanguage(($event.target as HTMLSelectElement).value)">
             <option value="es">Español</option>
             <option value="en">English</option>
             <option value="it">Italiano</option>
           </select>
         </div>
-        <nav v-if="account?.user" class="nav">
-          <NuxtLink to="/exams">{{ t('Exámenes') }}</NuxtLink>
-          <template v-if="route.query.examId && route.path !== '/exams'">
-            <NuxtLink :to="{ path: '/', query: examQuery }">{{ t('Preguntas') }}</NuxtLink>
-            <NuxtLink :to="{ path: '/study', query: examQuery }">{{ t('Estudiar') }}</NuxtLink>
-            <NuxtLink :to="{ path: '/exam', query: examQuery }">{{ t('Simulacro') }}</NuxtLink>
-          </template>
-          <NuxtLink v-if="account.enabled && account.user.role === 'admin'" to="/users">{{ t('Invitar') }}</NuxtLink>
-          <button v-if="account.enabled" class="btn ghost small" @click="logout">{{ t('Cerrar sesión') }}</button>
-        </nav>
+        <details v-if="account?.enabled && account.user" ref="accountMenu" class="account-menu" @keydown.esc.prevent="closeAccountMenu" @focusout="leaveAccountMenu">
+          <summary :aria-label="t('Cuenta')">
+            <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="8" r="3.5" />
+              <path d="M4 21v-2a8 8 0 0 1 16 0v2" />
+            </svg>
+            <span class="account-label">{{ t('Cuenta') }}</span>
+          </summary>
+          <div class="account-popover">
+            <NuxtLink v-if="account.user.role === 'admin'" to="/users">{{ t('Invitar') }}</NuxtLink>
+            <button type="button" @click="logout">{{ t('Cerrar sesión') }}</button>
+          </div>
+        </details>
       </div>
     </header>
 
-    <main class="page-wrap">
+    <nav v-if="account?.user && route.path !== '/exams'" class="nav" :aria-label="t('Navegación principal')">
+      <NuxtLink to="/exams">{{ t('Exámenes') }}</NuxtLink>
+      <template v-if="route.query.examId">
+        <NuxtLink :to="{ path: '/', query: examQuery }">{{ t('Preguntas') }}</NuxtLink>
+        <NuxtLink :to="{ path: '/study', query: examQuery }">{{ t('Estudiar') }}</NuxtLink>
+        <NuxtLink :to="{ path: '/exam', query: examQuery }">{{ t('Simulacro') }}</NuxtLink>
+      </template>
+    </nav>
+
+    <main id="main-content" class="page-wrap" tabindex="-1">
       <NuxtPage :page-key="page => `${page.path}:${page.query.examId || ''}`" />
     </main>
   </div>

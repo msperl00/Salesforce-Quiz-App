@@ -2,6 +2,18 @@ export const supportedLanguages = ['es', 'en', 'it']
 
 // Only interface text is translated. Question-bank content is never passed here.
 export const uiMessages = {
+  'Saltar al contenido': ['Skip to content', 'Vai al contenuto'],
+  'Navegación principal': ['Main navigation', 'Navigazione principale'],
+  'Cuenta': ['Account', 'Account'],
+  'Opciones': ['Options', 'Opzioni'],
+  'Renombrar {name}': ['Rename {name}', 'Rinomina {name}'],
+  'Tu respuesta': ['Your answer', 'La tua risposta'],
+  'Archivo JSON de preguntas': ['Question JSON file', 'File JSON delle domande'],
+  'Ocultar formulario': ['Hide form', 'Nascondi il modulo'],
+  'Respuesta {number}: correcta': ['Answer {number}: correct', 'Risposta {number}: corretta'],
+  'Quitar respuesta {number}': ['Remove answer {number}', 'Rimuovi la risposta {number}'],
+  'Editar pregunta: {prompt}': ['Edit question: {prompt}', 'Modifica domanda: {prompt}'],
+  'Borrar pregunta: {prompt}': ['Delete question: {prompt}', 'Elimina domanda: {prompt}'],
   'Elige cuántas preguntas quieres y genera un simulacro aleatorio, sin repeticiones.': ['Choose how many questions you want and generate a random practice exam without duplicates.', 'Scegli quante domande vuoi e genera una simulazione casuale senza ripetizioni.'],
   'Introduce un número entero entre 1 y {count}.': ['Enter a whole number between 1 and {count}.', 'Inserisci un numero intero da 1 a {count}.'],
   'Tamaños rápidos': ['Quick question counts', 'Numero rapido di domande'],

@@ -9,10 +9,15 @@ const props = defineProps<{
 }>()
 
 const page = ref(1)
+const listHeading = ref<HTMLHeadingElement | null>(null)
 const pageSize = 25
 const pageCount = computed(() => Math.max(1, Math.ceil(props.questions.length / pageSize)))
 const visibleQuestions = computed(() => props.questions.slice((page.value - 1) * pageSize, page.value * pageSize))
 watch(() => props.questions, () => { page.value = 1 })
+function changePage(direction: number) {
+  page.value = Math.min(pageCount.value, Math.max(1, page.value + direction))
+  nextTick(() => listHeading.value?.focus())
+}
 
 const emit = defineEmits<{
   edit: [question: Question]
@@ -24,7 +29,7 @@ const emit = defineEmits<{
   <section class="panel" style="padding: 1.25rem;">
     <div class="section-title">
       <div>
-        <h2>{{ t('Banco de preguntas') }}</h2>
+        <h2 ref="listHeading" tabindex="-1">{{ t('Banco de preguntas') }}</h2>
         <p class="muted">{{ t('Edición directa, sin pantallas extra.') }}</p>
       </div>
 
@@ -50,8 +55,8 @@ const emit = defineEmits<{
           </div>
 
           <div v-if="canEdit" class="inline-actions">
-            <button class="btn small ghost" type="button" :disabled="busy" @click="emit('edit', question)">{{ t('Editar') }}</button>
-            <button class="btn small danger" type="button" :disabled="busy" @click="emit('remove', question)">{{ t('Borrar') }}</button>
+            <button class="btn small ghost" type="button" :disabled="busy" :aria-label="t('Editar pregunta: {prompt}', { prompt: question.prompt })" @click="emit('edit', question)">{{ t('Editar') }}</button>
+            <button class="btn small danger" type="button" :disabled="busy" :aria-label="t('Borrar pregunta: {prompt}', { prompt: question.prompt })" @click="emit('remove', question)">{{ t('Borrar') }}</button>
           </div>
         </div>
 
@@ -78,9 +83,9 @@ const emit = defineEmits<{
     </div>
 
     <div v-if="questions.length > pageSize" class="actions" style="margin-top: 1rem;">
-      <button class="btn ghost" type="button" :disabled="page === 1 || busy" @click="page -= 1">{{ t('Anterior') }}</button>
+      <button class="btn ghost" type="button" :disabled="page === 1 || busy" @click="changePage(-1)">{{ t('Anterior') }}</button>
       <span class="muted" aria-live="polite">{{ t('Pagina {current} de {total}', { current: page, total: pageCount }) }}</span>
-      <button class="btn ghost" type="button" :disabled="page === pageCount || busy" @click="page += 1">{{ t('Siguiente') }}</button>
+      <button class="btn ghost" type="button" :disabled="page === pageCount || busy" @click="changePage(1)">{{ t('Siguiente') }}</button>
     </div>
 
     <div v-if="!questions.length" class="empty-state">
