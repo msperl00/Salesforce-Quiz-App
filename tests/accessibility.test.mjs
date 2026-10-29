@@ -25,3 +25,9 @@ test('form boundaries and keyboard focus exceed 3:1 contrast', () => {
   assert.ok(contrast(color('control-line'), color('panel')) >= 3)
   assert.ok(contrast(color('primary'), color('panel')) >= 3)
 })
+
+test('native select pickers have an explicit WebKit appearance and a visible affordance', () => {
+  assert.match(css, /\.field select\s*\{[^}]*-webkit-appearance:\s*none/)
+  assert.match(css, /\.field select\s*\{[^}]*background-image:/)
+  assert.match(css, /\.field select\s*\{[^}]*padding-right:/)
+})

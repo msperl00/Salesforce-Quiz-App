@@ -76,6 +76,15 @@ Las comprobaciones de navegador usan tamaños equivalentes a iPhone 16 Pro (402�
 iPad (820×1180 y horizontal) y Mac (1440×900), además de 320 px para reflujo. Esto no
 sustituye pruebas con Safari/VoiceOver y dispositivos físicos, ni certifica WCAG.
 
+También se ha probado Safari de macOS en su modo de diseño adaptable, con datos
+ficticios locales: 402x874 (3x), 820x1180 (2x), iPad horizontal e iPhone horizontal.
+Se comprobaron navegación de preguntas, solución, filtro de tema, mezcla, formularios,
+cantidad personalizada, conservación de respuestas, cancelar descarte, corrección y
+nuevo sorteo. Los `select` mantienen el selector HTML nativo, con apariencia CSS
+normalizada para evitar que WebKit los dibuje como controles de altura reducida.
+El modo adaptable no reproduce todas las particularidades del teclado y las barras
+de Safari en iOS/iPadOS; estas quedan pendientes de comprobar en dispositivos físicos.
+
 ## Arquitectura mínima
 
 - `pages/`: interfaz web

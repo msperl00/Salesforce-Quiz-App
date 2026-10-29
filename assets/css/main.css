@@ -363,6 +363,16 @@ input[type="radio"] {
   font-size: 1rem;
 }
 
+/* Keep WebKit's native picker, but avoid the macOS mini-button rendering. */
+.field select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%2352605a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.5rem;
+}
+
 .checkbox-field {
   align-self: end;
   min-height: 3rem;
@@ -694,7 +704,7 @@ label.choice:has(input:focus-visible) { outline: 3px solid var(--primary); outli
   .brand p { font-size: 0.75rem; }
   .account-label { display: none; }
   .language-switch { width: 6.5rem; }
-  .language-switch select { padding: 0.65rem 0.4rem; }
+  .language-switch select { padding: 0.65rem 2rem 0.65rem 0.65rem; background-position: right 0.5rem center; }
   .header-tools { gap: 0.4rem; }
   .nav { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; gap: 0.15rem; margin-bottom: 1rem; }
   .nav a { padding-inline: 0.2rem; font-size: 0.82rem; overflow-wrap: anywhere; }
