@@ -73,6 +73,16 @@ entre simulacros distintos, pues cada sorteo es independiente.
 Durante una sesión la configuración está bloqueada. Descartarla requiere confirmación dentro de la página
 y solo borra las respuestas temporales de esa sesión, nunca preguntas del banco.
 
+## Apoyos de memoria de Peñíscola
+
+`content/peniscola-2026/` contiene explicaciones breves en castellano y sus
+fuentes para las 415 preguntas. Se añaden al texto de solución ya existente,
+sin traducir los enunciados ni cambiar claves, opciones o notas. Las claves
+dudosas se señalan, no se corrigen silenciosamente.
+Consulta el README de esa carpeta antes de aplicar `npm run db:explain-peniscola`:
+por defecto solo comprueba y para actualizar exige `--apply`, crea una copia
+privada y verifica que el banco no haya cambiado. No se ejecuta al desplegar.
+
 ## Revisión responsive y accesibilidad
 
 La interfaz conserva el zoom del navegador, inputs de al menos 16 px, foco visible,

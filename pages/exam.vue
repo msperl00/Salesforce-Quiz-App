@@ -272,7 +272,7 @@ const score = computed(() => {
         <div v-if="revealAnswers" class="banner feedback-message" :class="{ success: feedbackStatus === 'correct', warning: feedbackStatus === 'incorrect' || (submitted && feedbackStatus !== 'correct') }">{{ t(feedbackMessage) }}</div>
       </div>
       <div v-if="revealAnswers" class="stack">
-        <div v-if="currentQuestion.explanation" class="banner success">
+        <div v-if="currentQuestion.explanation" class="banner success solution-text">
           <strong>{{ t('Explicación:') }}</strong> {{ currentQuestion.explanation }}
         </div>
         <div v-if="currentQuestion.note" class="banner warning">
@@ -320,7 +320,7 @@ const score = computed(() => {
             <p>{{ question.prompt }}</p>
             <strong>{{ t(isQuestionCorrect(question) ? 'OK' : 'FAIL') }}</strong>
           </div>
-          <p v-if="question.explanation" class="muted" style="margin-bottom: 0;">{{ question.explanation }}</p>
+          <p v-if="question.explanation" class="muted solution-text" style="margin-bottom: 0;">{{ question.explanation }}</p>
         </article>
       </div>
     </section>
