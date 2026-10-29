@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { focusMovedOutside } from '~/utils/focus.mjs'
+
 const route = useRoute()
 const { language, setLanguage, t } = useLanguage()
 const pageNames: Record<string, string> = { '/': 'Preguntas', '/study': 'Estudiar', '/exam': 'Simulacro', '/exams': 'Exámenes', '/login': 'Iniciar sesión', '/register': 'Aceptar invitación', '/users': 'Invitar' }
@@ -13,7 +15,8 @@ function closeAccountMenu() {
   accountMenu.value?.querySelector('summary')?.focus()
 }
 function leaveAccountMenu(event: FocusEvent) {
-  if (!(event.relatedTarget instanceof Node) || !accountMenu.value?.contains(event.relatedTarget)) {
+  const nextTarget = event.relatedTarget instanceof Node ? event.relatedTarget : null
+  if (focusMovedOutside(accountMenu.value, nextTarget)) {
     accountMenu.value?.removeAttribute('open')
   }
 }

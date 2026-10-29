@@ -82,6 +82,8 @@ Se comprobaron navegación de preguntas, solución, filtro de tema, mezcla, form
 cantidad personalizada, conservación de respuestas, cancelar descarte, corrección y
 nuevo sorteo. Los `select` mantienen el selector HTML nativo, con apariencia CSS
 normalizada para evitar que WebKit los dibuje como controles de altura reducida.
+El menú de cuenta no se cierra con un `focusout` sin destino: Safari puede emitirlo
+al pulsar un botón con el ratón y cerrarlo entonces impediría ejecutar su acción.
 El modo adaptable no reproduce todas las particularidades del teclado y las barras
 de Safari en iOS/iPadOS; estas quedan pendientes de comprobar en dispositivos físicos.
 
