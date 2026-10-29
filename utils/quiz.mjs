@@ -21,3 +21,8 @@ export function shuffledQuestions(questions, random = Math.random) {
   }
   return result
 }
+
+export function sampleQuestions(questions, count, random = Math.random) {
+  if (!Number.isSafeInteger(count) || count < 1 || count > questions.length) return []
+  return shuffledQuestions(questions, random).slice(0, count)
+}

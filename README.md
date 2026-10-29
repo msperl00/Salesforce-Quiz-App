@@ -53,6 +53,17 @@ AWS `eu-west-1`. Si cambia la región de la base, ajusta también esta configura
 Los recursos estáticos siguen distribuidos por la CDN; el HTML y la API de las
 cuentas llevan `private, no-store`. El favicon SVG se sirve incluso sin sesión.
 
+## Simulacros aleatorios
+
+En Simulacro puedes escribir cualquier cantidad entera entre 1 y las preguntas
+disponibles, usar los accesos rápidos de 10, 20, 50 o 100 (cuando haya suficientes),
+o seleccionar todas. El filtro de etiqueta limita el sorteo al tema elegido.
+Cada simulacro toma exactamente esa cantidad sin repetir preguntas y sin modificar
+el banco. Tras corregirlo puedes generar otro; algunas preguntas pueden reaparecer
+entre simulacros distintos, pues cada sorteo es independiente.
+Durante una sesión la configuración está bloqueada. Descartarla requiere confirmación dentro de la página
+y solo borra las respuestas temporales de esa sesión, nunca preguntas del banco.
+
 ## Arquitectura mínima
 
 - `pages/`: interfaz web

@@ -445,6 +445,12 @@ input[type="radio"] {
   border-radius: 10px;
 }
 
+.quick-counts .btn[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: white;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

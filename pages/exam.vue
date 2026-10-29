@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Question, Tag } from '~/types/quiz'
-import { questionTags, shuffledQuestions } from '~/utils/quiz.mjs'
+import { questionTags, sampleQuestions } from '~/utils/quiz.mjs'
 
 const api = useQuizApi()
 const { t } = useLanguage()
@@ -11,6 +11,7 @@ const selectedTag = ref('')
 const desiredCount = ref(Math.min(10, allQuestions.value.length) || 1)
 const started = ref(false)
 const submitted = ref(false)
+const discardRequested = ref(false)
 const currentIndex = ref(0)
 const answersByQuestion = ref<Record<number, number[]>>({})
 const examQuestions = ref<Question[]>([])
@@ -21,6 +22,8 @@ const pool = computed(() => selectedTag.value
   : allQuestions.value)
 const validCount = computed(() => Number.isInteger(desiredCount.value)
   && desiredCount.value >= 1 && desiredCount.value <= pool.value.length)
+const inProgress = computed(() => started.value && !submitted.value)
+const quickCounts = computed(() => [10, 20, 50, 100].filter(count => count <= pool.value.length))
 
 watch(pool, (next, previous) => {
   if (started.value && !submitted.value) return
@@ -30,14 +33,24 @@ watch(pool, (next, previous) => {
 })
 
 function startExam() {
-  if (!validCount.value || pending.value) return
-  examQuestions.value = shuffledQuestions(pool.value)
-    .slice(0, Math.min(desiredCount.value, pool.value.length))
+  if (!validCount.value || pending.value || inProgress.value) return
+  examQuestions.value = sampleQuestions(pool.value, desiredCount.value)
 
   answersByQuestion.value = {}
   currentIndex.value = 0
   started.value = true
   submitted.value = false
+  discardRequested.value = false
+}
+
+function discardExam() {
+  if (!discardRequested.value || !inProgress.value) return
+  started.value = false
+  submitted.value = false
+  examQuestions.value = []
+  answersByQuestion.value = {}
+  currentIndex.value = 0
+  discardRequested.value = false
 }
 
 function toggleAnswer(questionId: number, answerId: number | undefined, checked: boolean) {
@@ -94,7 +107,7 @@ const score = computed(() => {
       <div class="section-title">
         <div>
           <h2>{{ t('Simulacro') }}</h2>
-          <p class="muted">{{ t('Sesión cerrada con puntuación final y revisión de errores.') }}</p>
+          <p class="muted">{{ t('Elige cuántas preguntas quieres y genera un simulacro aleatorio, sin repeticiones.') }}</p>
         </div>
         <p class="muted" role="status" aria-live="polite">{{ t(pool.length === 1 ? '1 pregunta disponible' : '{count} preguntas disponibles', { count: pool.length }) }}</p>
       </div>
@@ -116,19 +129,34 @@ const score = computed(() => {
             min="1"
             :max="pool.length || 1"
             type="number"
-            aria-describedby="count-help"
+            step="1"
+            :aria-describedby="!validCount && pool.length ? 'count-help count-error' : 'count-help'"
             :aria-invalid="pool.length > 0 && !validCount"
             :disabled="started && !submitted"
           >
           <p v-if="pool.length" id="count-help" class="muted" style="margin: 0;">
             {{ t('Puedes elegir entre 1 y {count} preguntas.', { count: pool.length }) }}
           </p>
+          <p v-if="pool.length && !validCount" id="count-error" class="form-error" role="alert">
+            {{ t('Introduce un número entero entre 1 y {count}.', { count: pool.length }) }}
+          </p>
+          <div v-if="quickCounts.length" class="inline-actions quick-counts" role="group" :aria-label="t('Tamaños rápidos')">
+            <button
+              v-for="count in quickCounts"
+              :key="count"
+              class="btn ghost small"
+              type="button"
+              :aria-pressed="desiredCount === count"
+              :disabled="pending || inProgress"
+              @click="desiredCount = count"
+            >{{ t('{count} preguntas', { count }) }}</button>
+          </div>
         </div>
       </div>
 
       <div class="actions" style="margin-top: 1rem;">
-        <button class="btn primary" type="button" :disabled="pending || !validCount" @click="startExam">
-          {{ t(started ? 'Reiniciar examen' : 'Empezar examen') }}
+        <button v-if="!inProgress" class="btn primary" type="button" :disabled="pending || !validCount" @click="startExam">
+          {{ t(started ? 'Crear otro simulacro aleatorio' : 'Crear simulacro aleatorio') }}
         </button>
         <button class="btn ghost" type="button" :disabled="pending || (started && !submitted)" @click="refresh()">{{ t('Actualizar preguntas') }}</button>
         <button
@@ -142,13 +170,24 @@ const score = computed(() => {
 
         <button
           v-if="started && !submitted"
-          class="btn ghost"
+          class="btn primary"
           type="button"
           @click="submitted = true"
         >
           {{ t('Corregir') }}
         </button>
+        <button v-if="inProgress" class="btn ghost" type="button" :aria-expanded="discardRequested" aria-controls="discard-confirmation" @click="discardRequested = true">{{ t('Descartar simulacro') }}</button>
       </div>
+      <div v-if="inProgress && discardRequested" id="discard-confirmation" class="banner warning" role="alert" style="margin-top: 1rem;">
+        <p>{{ t('Se perderán las respuestas de este simulacro. ¿Descartarlo y cambiar la configuración?') }}</p>
+        <div class="actions">
+          <button class="btn ghost" type="button" @click="discardRequested = false">{{ t('Cancelar') }}</button>
+          <button class="btn danger" type="button" @click="discardExam">{{ t('Descartar y cambiar configuración') }}</button>
+        </div>
+      </div>
+      <p v-if="!inProgress && validCount" class="muted">
+        {{ t('Se elegirán {count} preguntas al azar del filtro seleccionado. Cada nuevo simulacro vuelve a sortearlas.', { count: desiredCount }) }}
+      </p>
       <p v-if="!pending && !error && !pool.length" class="empty-state">{{ t('No hay preguntas para este examen y filtro. Añádelas desde Preguntas.') }}</p>
     </section>
 

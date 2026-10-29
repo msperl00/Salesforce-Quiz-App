@@ -101,8 +101,8 @@ test('415-question list, filters, export and SSR stay complete and exam-scoped',
     assert.ok(smallExam.includes('Todas (1)'))
     assert.match(smallExam, /<input(?=[^>]*id="count")(?=[^>]*value="1")[^>]*>/)
     for (const [language, labels] of [
-      ['en', ['All (415)', 'Use all (415)', 'Start exam', 'Show answer']],
-      ['it', ['Tutte (415)', 'Usa tutte (415)', 'Inizia la simulazione', 'Mostra la soluzione']]
+      ['en', ['All (415)', 'Use all (415)', 'Generate random practice exam', 'Show answer']],
+      ['it', ['Tutte (415)', 'Usa tutte (415)', 'Genera una simulazione casuale', 'Mostra la soluzione']]
     ]) {
       const localizedExam = await (await get('/exam?examId=2', language)).text()
       assert.match(localizedExam, new RegExp(`<html[^>]*lang="${language}"`))
@@ -115,7 +115,7 @@ test('415-question list, filters, export and SSR stay complete and exam-scoped',
     }
     const spanishAgain = await (await get('/exam?examId=2')).text()
     assert.match(spanishAgain, /<html[^>]*lang="es"/)
-    assert.ok(spanishAgain.includes('Empezar examen'))
+    assert.ok(spanishAgain.includes('Crear simulacro aleatorio'))
     const invalidLanguage = await (await get('/exam?examId=2', 'de')).text()
     assert.match(invalidLanguage, /<html[^>]*lang="es"/)
   } finally {

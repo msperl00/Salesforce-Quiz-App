@@ -2,6 +2,16 @@ export const supportedLanguages = ['es', 'en', 'it']
 
 // Only interface text is translated. Question-bank content is never passed here.
 export const uiMessages = {
+  'Elige cuántas preguntas quieres y genera un simulacro aleatorio, sin repeticiones.': ['Choose how many questions you want and generate a random practice exam without duplicates.', 'Scegli quante domande vuoi e genera una simulazione casuale senza ripetizioni.'],
+  'Introduce un número entero entre 1 y {count}.': ['Enter a whole number between 1 and {count}.', 'Inserisci un numero intero da 1 a {count}.'],
+  'Tamaños rápidos': ['Quick question counts', 'Numero rapido di domande'],
+  '{count} preguntas': ['{count} questions', '{count} domande'],
+  'Crear simulacro aleatorio': ['Generate random practice exam', 'Genera una simulazione casuale'],
+  'Crear otro simulacro aleatorio': ['Generate another random practice exam', "Genera un'altra simulazione casuale"],
+  'Descartar simulacro': ['Discard practice exam', 'Annulla la simulazione'],
+  'Descartar y cambiar configuración': ['Discard and change settings', 'Annulla e modifica le impostazioni'],
+  'Se perderán las respuestas de este simulacro. ¿Descartarlo y cambiar la configuración?': ['Your answers in this practice exam will be lost. Discard it and change the settings?', 'Le risposte di questa simulazione andranno perse. Annullarla e modificare le impostazioni?'],
+  'Se elegirán {count} preguntas al azar del filtro seleccionado. Cada nuevo simulacro vuelve a sortearlas.': ['{count} questions will be selected at random from the selected filter. Each new practice exam draws a new sample.', '{count} domande verranno estratte a caso dal filtro selezionato. Ogni nuova simulazione esegue una nuova estrazione.'],
   'Aprende a tu ritmo': ['Learn at your own pace', 'Impara al tuo ritmo'],
   'Actualizar preguntas': ['Refresh questions', 'Aggiorna le domande'],
   'Navegación de preguntas': ['Question navigation', 'Navigazione delle domande'],
