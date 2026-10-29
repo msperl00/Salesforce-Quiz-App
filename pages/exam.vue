@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { Question, Tag } from '~/types/quiz'
+import type { Question, SessionMode, Tag } from '~/types/quiz'
 import { questionTags, sampleQuestions } from '~/utils/quiz.mjs'
+import { allowsMultipleAnswers, canRevealAnswers, evaluateSelection, selectAnswer } from '~/utils/exam-session.mjs'
 
 const api = useQuizApi()
 const { t } = useLanguage()
@@ -9,6 +10,8 @@ const { data: allQuestions, pending, error, refresh } = await useQuestionBank(ap
 const tags = computed<(Tag & { count: number })[]>(() => questionTags(allQuestions.value))
 const selectedTag = ref('')
 const desiredCount = ref(Math.min(10, allQuestions.value.length) || 1)
+const mode = ref<SessionMode>('practice')
+const sessionMode = ref<SessionMode>('practice')
 const started = ref(false)
 const submitted = ref(false)
 const discardRequested = ref(false)
@@ -22,6 +25,18 @@ const discardTrigger = ref<HTMLButtonElement | null>(null)
 const cancelDiscard = ref<HTMLButtonElement | null>(null)
 
 const currentQuestion = computed(() => examQuestions.value[currentIndex.value] || null)
+const currentSelection = computed(() => currentQuestion.value ? answersByQuestion.value[currentQuestion.value.id] || [] : [])
+const multipleAnswers = computed(() => currentQuestion.value ? allowsMultipleAnswers(currentQuestion.value) : false)
+const revealAnswers = computed(() => canRevealAnswers(sessionMode.value, submitted.value, currentSelection.value))
+const feedbackStatus = computed(() => currentQuestion.value ? evaluateSelection(currentQuestion.value, currentSelection.value) : 'unanswered')
+const feedbackMessage = computed(() => {
+  if (feedbackStatus.value === 'correct') return 'Respuesta correcta.'
+  if (feedbackStatus.value === 'incorrect') return 'Respuesta incorrecta.'
+  if (feedbackStatus.value === 'partial') return submitted.value
+    ? 'Respuesta incompleta: faltan opciones correctas.'
+    : 'Vas bien: aún faltan opciones correctas.'
+  return 'Sin responder.'
+})
 const pool = computed(() => selectedTag.value
   ? allQuestions.value.filter(question => question.tags.some(tag => tag.name === selectedTag.value))
   : allQuestions.value)
@@ -40,6 +55,7 @@ watch(pool, (next, previous) => {
 function startExam() {
   if (!validCount.value || pending.value || inProgress.value) return
   examQuestions.value = sampleQuestions(pool.value, desiredCount.value)
+  sessionMode.value = mode.value
 
   answersByQuestion.value = {}
   currentIndex.value = 0
@@ -75,30 +91,19 @@ function submitExam() {
   nextTick(() => scoreHeading.value?.focus())
 }
 
-function toggleAnswer(questionId: number, answerId: number | undefined, checked: boolean) {
-  if (!answerId) {
+function toggleAnswer(question: Question, answerId: number | undefined, checked: boolean) {
+  if (!answerId || submitted.value) {
     return
-  }
-
-  const selected = new Set(answersByQuestion.value[questionId] || [])
-
-  if (checked) {
-    selected.add(answerId)
-  } else {
-    selected.delete(answerId)
   }
 
   answersByQuestion.value = {
     ...answersByQuestion.value,
-    [questionId]: [...selected]
+    [question.id]: selectAnswer(question, answersByQuestion.value[question.id] || [], answerId, checked)
   }
 }
 
 function isQuestionCorrect(question: Question) {
-  const selected = [...(answersByQuestion.value[question.id] || [])].sort((a, b) => a - b)
-  const correct = question.answers.filter(answer => answer.isCorrect).map(answer => answer.id as number).sort((a, b) => a - b)
-
-  return JSON.stringify(selected) === JSON.stringify(correct)
+  return evaluateSelection(question, answersByQuestion.value[question.id] || []) === 'correct'
 }
 
 const score = computed(() => {
@@ -129,10 +134,23 @@ const score = computed(() => {
       <div class="section-title">
         <div>
           <h2>{{ t('Simulacro') }}</h2>
+          <p v-if="started" class="session-mode-label">{{ t(sessionMode === 'practice' ? 'Simulacro normal: solución inmediata' : 'Examen real: soluciones al finalizar') }}</p>
           <p v-if="!inProgress" class="muted">{{ t('Elige cuántas preguntas quieres y genera un simulacro aleatorio, sin repeticiones.') }}</p>
         </div>
         <p class="muted" role="status" aria-live="polite">{{ inProgress ? t('{count} preguntas', { count: examQuestions.length }) : t(pool.length === 1 ? '1 pregunta disponible' : '{count} preguntas disponibles', { count: pool.length }) }}</p>
       </div>
+
+      <fieldset v-show="!inProgress" class="mode-picker" :disabled="inProgress">
+        <legend>{{ t('Modo de sesión') }}</legend>
+        <label class="mode-option" :class="{ selected: mode === 'practice' }">
+          <input v-model="mode" type="radio" name="session-mode" value="practice">
+          <span><strong>{{ t('Simulacro normal') }}</strong><small>{{ t('Comprueba cada respuesta al seleccionarla.') }}</small></span>
+        </label>
+        <label class="mode-option" :class="{ selected: mode === 'exam' }">
+          <input v-model="mode" type="radio" name="session-mode" value="exam">
+          <span><strong>{{ t('Examen real') }}</strong><small>{{ t('Sin pistas. Las soluciones se muestran solo al terminar.') }}</small></span>
+        </label>
+      </fieldset>
 
       <div v-show="!inProgress" class="field-grid">
         <div class="field">
@@ -210,7 +228,7 @@ const score = computed(() => {
     <section v-if="started && currentQuestion" class="panel session-card">
       <div class="session-controls" role="group" :aria-label="t('Navegación de preguntas')">
         <button class="btn ghost" type="button" :disabled="currentIndex === 0" @click="currentIndex -= 1">{{ t('Anterior') }}</button>
-        <button v-if="!submitted" class="btn primary" type="button" @click="submitExam">{{ t('Corregir') }}</button>
+        <button v-if="!submitted" class="btn primary" type="button" @click="submitExam">{{ t(sessionMode === 'practice' ? 'Terminar práctica' : 'Finalizar examen') }}</button>
         <span v-else class="session-position">{{ currentIndex + 1 }} / {{ examQuestions.length }}</span>
         <button class="btn ghost" type="button" :disabled="currentIndex === examQuestions.length - 1" @click="currentIndex += 1">{{ t('Siguiente') }}</button>
       </div>
@@ -224,36 +242,41 @@ const score = computed(() => {
       <div class="section-title">
         <div>
           <p class="muted" aria-live="polite">{{ t('Pregunta {current} de {total}', { current: currentIndex + 1, total: examQuestions.length }) }}</p>
-          <h2 ref="questionHeading" tabindex="-1">{{ currentQuestion.prompt }}</h2>
+          <h2 :id="`question-title-${currentQuestion.id}`" ref="questionHeading" tabindex="-1">{{ currentQuestion.prompt }}</h2>
+          <p class="muted answer-instructions">{{ t(multipleAnswers ? 'Puedes seleccionar varias respuestas.' : 'Selecciona una respuesta.') }}</p>
         </div>
       </div>
 
-      <div class="choice-list">
+      <div class="choice-list" :role="multipleAnswers ? 'group' : 'radiogroup'" :aria-labelledby="`question-title-${currentQuestion.id}`">
         <label
           v-for="answer in currentQuestion.answers"
           :key="answer.id || answer.text"
           class="choice"
           :class="{
-            correct: submitted && answer.isCorrect,
-            incorrect: submitted && (answersByQuestion[currentQuestion.id] || []).includes(answer.id || -1) && !answer.isCorrect
+            correct: revealAnswers && answer.isCorrect,
+            incorrect: revealAnswers && currentSelection.includes(answer.id || -1) && !answer.isCorrect
           }"
         >
           <input
-            type="checkbox"
+            :type="multipleAnswers ? 'checkbox' : 'radio'"
+            :name="`question-${currentQuestion.id}`"
             :disabled="submitted"
             :checked="(answersByQuestion[currentQuestion.id] || []).includes(answer.id || -1)"
-            @change="toggleAnswer(currentQuestion.id, answer.id, ($event.target as HTMLInputElement).checked)"
+            @change="toggleAnswer(currentQuestion, answer.id, ($event.target as HTMLInputElement).checked)"
           >
-          <span>{{ answer.text }}<span v-if="submitted && (answer.isCorrect || (answersByQuestion[currentQuestion.id] || []).includes(answer.id || -1))" class="answer-status">{{ t(answer.isCorrect ? 'Correcta' : 'Tu respuesta') }}</span></span>
+          <span>{{ answer.text }}<span v-if="revealAnswers && (answer.isCorrect || currentSelection.includes(answer.id || -1))" class="answer-status">{{ t(answer.isCorrect ? 'Correcta' : 'Incorrecta') }}</span></span>
         </label>
       </div>
 
-      <div v-if="submitted" class="stack">
-        <div class="banner" :class="isQuestionCorrect(currentQuestion) ? 'success' : 'warning'">
-          {{ t(isQuestionCorrect(currentQuestion) ? 'Respuesta correcta.' : 'Respuesta incorrecta.') }}
-        </div>
+      <div role="status" aria-live="polite" aria-atomic="true">
+        <div v-if="revealAnswers" class="banner feedback-message" :class="{ success: feedbackStatus === 'correct', warning: feedbackStatus === 'incorrect' || (submitted && feedbackStatus !== 'correct') }">{{ t(feedbackMessage) }}</div>
+      </div>
+      <div v-if="revealAnswers" class="stack">
         <div v-if="currentQuestion.explanation" class="banner success">
           <strong>{{ t('Explicación:') }}</strong> {{ currentQuestion.explanation }}
+        </div>
+        <div v-if="currentQuestion.note" class="banner warning">
+          <strong>{{ t('Nota:') }}</strong> {{ currentQuestion.note }}
         </div>
       </div>
     </section>
@@ -261,8 +284,8 @@ const score = computed(() => {
     <section v-if="score" class="panel" style="padding: 1.25rem;">
       <div class="section-title">
         <div>
-          <h2 ref="scoreHeading" tabindex="-1">{{ t('Resultado final') }}</h2>
-          <p class="muted">{{ t('Revisión rápida de aciertos y fallos.') }}</p>
+          <h2 ref="scoreHeading" tabindex="-1">{{ t(sessionMode === 'practice' ? 'Resultado de la práctica' : 'Resultado final') }}</h2>
+          <p class="muted">{{ t(sessionMode === 'practice' ? 'Resultado de tus selecciones actuales. Has podido consultar las soluciones y rectificar.' : 'Revisión rápida de aciertos y fallos.') }}</p>
         </div>
       </div>
 

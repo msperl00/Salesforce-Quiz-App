@@ -55,3 +55,5 @@ export interface ExamSubmission {
   questionId: number
   answerIds: number[]
 }
+
+export type SessionMode = 'practice' | 'exam'

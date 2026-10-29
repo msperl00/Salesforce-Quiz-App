@@ -2,6 +2,23 @@ export const supportedLanguages = ['es', 'en', 'it']
 
 // Only interface text is translated. Question-bank content is never passed here.
 export const uiMessages = {
+  'Modo de sesión': ['Session mode', 'Modalità della sessione'],
+  'Simulacro normal': ['Practice mode', 'Simulazione guidata'],
+  'Examen real': ['Exam mode', 'Modalità esame'],
+  'Comprueba cada respuesta al seleccionarla.': ['Check each answer as soon as you select it.', 'Verifica ogni risposta appena la selezioni.'],
+  'Sin pistas. Las soluciones se muestran solo al terminar.': ['No hints. Answers are revealed only at the end.', 'Nessun suggerimento. Le soluzioni si vedono solo alla fine.'],
+  'Simulacro normal: solución inmediata': ['Practice mode: instant feedback', 'Simulazione guidata: riscontro immediato'],
+  'Examen real: soluciones al finalizar': ['Exam mode: answers at the end', 'Modalità esame: soluzioni alla fine'],
+  'Terminar práctica': ['Finish practice', 'Termina la pratica'],
+  'Finalizar examen': ['Finish exam', "Termina l'esame"],
+  'Selecciona una respuesta.': ['Select one answer.', 'Seleziona una risposta.'],
+  'Puedes seleccionar varias respuestas.': ['You can select multiple answers.', 'Puoi selezionare più risposte.'],
+  'Incorrecta': ['Incorrect', 'Errata'],
+  'Vas bien: aún faltan opciones correctas.': ['Good so far: some correct options are still missing.', 'Stai andando bene: mancano ancora alcune opzioni corrette.'],
+  'Respuesta incompleta: faltan opciones correctas.': ['Incomplete answer: some correct options are missing.', 'Risposta incompleta: mancano alcune opzioni corrette.'],
+  'Sin responder.': ['Not answered.', 'Senza risposta.'],
+  'Resultado de la práctica': ['Practice result', 'Risultato della pratica'],
+  'Resultado de tus selecciones actuales. Has podido consultar las soluciones y rectificar.': ['This score uses your current selections. You were able to view answers and try again.', 'Il risultato usa le selezioni attuali. Hai potuto vedere le soluzioni e riprovare.'],
   'Saltar al contenido': ['Skip to content', 'Vai al contenuto'],
   'Navegación principal': ['Main navigation', 'Navigazione principale'],
   'Cuenta': ['Account', 'Account'],

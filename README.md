@@ -55,6 +55,15 @@ cuentas llevan `private, no-store`. El favicon SVG se sirve incluso sin sesión.
 
 ## Simulacros aleatorios
 
+Antes de empezar puedes elegir **Simulacro normal** (por defecto) o **Examen real**.
+El primero muestra acierto/fallo, solución, explicación y nota al elegir una respuesta;
+permite rectificar. Con varias respuestas correctas, una selección parcial se indica
+como incompleta, no como incorrecta. El resultado de práctica usa las selecciones finales,
+no los primeros intentos. Examen real oculta estas pistas hasta pulsar Finalizar examen.
+El modo queda fijado durante la sesión; cambiarlo después no altera la revisión anterior.
+Las preguntas de una sola respuesta usan radio y las de varias respuestas usan casillas.
+Es una herramienta de estudio: el modo Examen real no es un sistema de examen supervisado.
+
 En Simulacro puedes escribir cualquier cantidad entera entre 1 y las preguntas
 disponibles, usar los accesos rápidos de 10, 20, 50 o 100 (cuando haya suficientes),
 o seleccionar todas. El filtro de etiqueta limita el sorteo al tema elegido.
