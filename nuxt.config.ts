@@ -16,6 +16,16 @@ export default defineNuxtConfig({
     }
   },
   css: ['~/assets/css/main.css'],
+  app: {
+    head: {
+      title: 'Salesforce Quiz',
+      meta: [{ name: 'theme-color', content: '#1e6f5c' }],
+      link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }]
+    }
+  },
+  routeRules: {
+    '/favicon.ico': { redirect: '/favicon.svg' }
+  },
   experimental: {
     appManifest: false
   },

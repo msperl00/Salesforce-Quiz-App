@@ -46,6 +46,7 @@ async function saveQuestion(payload: QuestionPayload) {
   try {
     if (editingQuestion.value) {
       await api.updateQuestion(editingQuestion.value.id, payload)
+      if (payload.examId && payload.examId !== api.examId) clearNuxtData(`question-bank:${payload.examId}`)
       message.value = { type: 'success', text: 'Pregunta actualizada.' }
     } else {
       await api.createQuestion(payload)
@@ -229,6 +230,7 @@ const stats = computed(() => {
       </div>
 
       <div class="toolbar" style="margin-top: 1rem;">
+        <button class="btn ghost" type="button" :disabled="pending || loading || saving || importing || deleting" @click="loadData()">{{ t('Actualizar preguntas') }}</button>
         <button class="btn primary" type="button" :disabled="exporting || pending" @click="downloadExport">
           {{ t(exporting ? 'Exportando...' : 'Exportar JSON') }}
         </button>

@@ -2,9 +2,9 @@ import { accountsEnabled, currentUser } from '~/server/utils/auth'
 
 export default defineEventHandler(async event => {
   const path = getRequestURL(event).pathname
-  if (path.startsWith('/_nuxt/') || path === '/favicon.ico' || path === '/__nuxt_error') return
+  if (path.startsWith('/_nuxt/') || path === '/favicon.ico' || path === '/favicon.svg' || path === '/__nuxt_error') return
+  setHeader(event, 'cache-control', 'private, no-store')
   if (path.startsWith('/api/')) {
-    setHeader(event, 'cache-control', 'private, no-store')
     if (!['GET', 'HEAD'].includes(event.method)) {
       const origin = getHeader(event, 'origin')
       if (origin && origin !== getRequestURL(event).origin) throw createError({ statusCode: 403, statusMessage: 'Origen no permitido.' })

@@ -25,6 +25,12 @@ export function authSession(event: H3Event) {
 }
 
 export async function currentUser(event: H3Event) {
+  // Scope deduplication to this request, never across users or subsequent requests.
+  event.context.quizUserLookup ??= resolveCurrentUser(event)
+  return event.context.quizUserLookup
+}
+
+async function resolveCurrentUser(event: H3Event) {
   if (!accountsEnabled()) return { id: 0, email: 'Modo local', role: 'admin' }
   const session = await authSession(event)
   if (!session.data.userId) return null

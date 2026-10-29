@@ -1,7 +1,11 @@
 <script setup lang="ts">
 const route = useRoute()
 const { language, setLanguage, t } = useLanguage()
-useHead(() => ({ htmlAttrs: { lang: language.value } }))
+const pageNames: Record<string, string> = { '/': 'Preguntas', '/study': 'Estudiar', '/exam': 'Simulacro', '/exams': 'Exámenes', '/login': 'Iniciar sesión', '/register': 'Aceptar invitación', '/users': 'Invitar' }
+useHead(() => ({
+  htmlAttrs: { lang: language.value },
+  title: `${t(pageNames[route.path] || 'Exámenes')} | Salesforce Quiz`
+}))
 const { data: account } = await useAccount()
 async function logout() {
   await $fetch('/api/auth/logout', { method: 'POST', body: {} })
@@ -14,10 +18,13 @@ const examQuery = computed(() => ({ examId: route.query.examId }))
   <div class="app-shell">
     <NuxtLoadingIndicator color="#376a5b" />
     <header class="topbar">
-      <div>
-        <p class="eyebrow">Salesforce Quiz App</p>
-        <h1>{{ t('Estudio simple, local y fácil de mantener') }}</h1>
-      </div>
+      <NuxtLink class="brand" to="/exams">
+        <img src="/favicon.svg" width="40" height="40" alt="">
+        <div>
+          <h1>Salesforce Quiz</h1>
+          <p class="muted">{{ t('Aprende a tu ritmo') }}</p>
+        </div>
+      </NuxtLink>
 
       <div class="header-controls">
         <div class="field language-switch">

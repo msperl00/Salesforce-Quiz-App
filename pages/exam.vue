@@ -130,6 +130,7 @@ const score = computed(() => {
         <button class="btn primary" type="button" :disabled="pending || !validCount" @click="startExam">
           {{ t(started ? 'Reiniciar examen' : 'Empezar examen') }}
         </button>
+        <button class="btn ghost" type="button" :disabled="pending || (started && !submitted)" @click="refresh()">{{ t('Actualizar preguntas') }}</button>
         <button
           class="btn ghost"
           type="button"

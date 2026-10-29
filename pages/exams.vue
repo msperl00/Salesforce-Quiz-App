@@ -28,6 +28,7 @@ async function save() {
       method: editingId.value ? 'PUT' : 'POST',
       body: { name: name.value }
     })
+    if (editingId.value) clearNuxtData(`exam-heading:${editingId.value}`)
     await refresh()
     reset()
   } catch (err: any) {

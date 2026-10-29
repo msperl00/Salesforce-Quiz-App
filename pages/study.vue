@@ -64,7 +64,10 @@ function previousQuestion() {
           <h2>{{ t('Modo estudio') }}</h2>
           <p class="muted">{{ t('Repaso libre con explicación visible solo cuando quieras.') }}</p>
         </div>
-        <p class="muted">{{ t(studyQuestions.length === 1 ? '1 pregunta disponible' : '{count} preguntas disponibles', { count: studyQuestions.length }) }}</p>
+        <div class="inline-actions">
+          <p class="muted">{{ t(studyQuestions.length === 1 ? '1 pregunta disponible' : '{count} preguntas disponibles', { count: studyQuestions.length }) }}</p>
+          <button class="btn ghost small" type="button" :disabled="pending" @click="refresh()">{{ t('Actualizar preguntas') }}</button>
+        </div>
       </div>
 
       <div class="field-grid">
@@ -76,8 +79,8 @@ function previousQuestion() {
           </select>
         </div>
 
-        <div class="field">
-          <label class="inline" style="margin-top: 2rem;">
+        <div class="field checkbox-field">
+          <label class="inline">
             <input v-model="shuffleMode" type="checkbox">
             {{ t('Mezclar preguntas') }}
           </label>
@@ -86,6 +89,13 @@ function previousQuestion() {
     </section>
 
     <section v-if="currentQuestion" class="study-card panel">
+      <div class="study-controls" role="group" :aria-label="t('Navegación de preguntas')">
+        <button class="btn ghost" type="button" @click="previousQuestion">{{ t('Anterior') }}</button>
+        <button class="btn primary" type="button" @click="reveal = !reveal">
+          {{ t(reveal ? 'Ocultar solución' : 'Mostrar solución') }}
+        </button>
+        <button class="btn ghost" type="button" @click="nextQuestion">{{ t('Siguiente') }}</button>
+      </div>
       <img
         v-if="currentQuestion.imageUrl"
         class="question-image"
@@ -125,13 +135,6 @@ function previousQuestion() {
         </div>
       </div>
 
-      <div class="actions" style="margin-top: 1rem;">
-        <button class="btn ghost" type="button" @click="previousQuestion">{{ t('Anterior') }}</button>
-        <button class="btn primary" type="button" @click="reveal = !reveal">
-          {{ t(reveal ? 'Ocultar solución' : 'Mostrar solución') }}
-        </button>
-        <button class="btn ghost" type="button" @click="nextQuestion">{{ t('Siguiente') }}</button>
-      </div>
     </section>
 
     <div v-else-if="!pending && !error" class="empty-state">

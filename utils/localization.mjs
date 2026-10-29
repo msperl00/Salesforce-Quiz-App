@@ -2,6 +2,9 @@ export const supportedLanguages = ['es', 'en', 'it']
 
 // Only interface text is translated. Question-bank content is never passed here.
 export const uiMessages = {
+  'Aprende a tu ritmo': ['Learn at your own pace', 'Impara al tuo ritmo'],
+  'Actualizar preguntas': ['Refresh questions', 'Aggiorna le domande'],
+  'Navegación de preguntas': ['Question navigation', 'Navigazione delle domande'],
   'Idioma': ['Language', 'Lingua'],
   'Estudio simple, local y fácil de mantener': ['Simple study, local and easy to maintain', 'Studio semplice, locale e facile da mantenere'],
   'Exámenes': ['Exams', 'Esami'],

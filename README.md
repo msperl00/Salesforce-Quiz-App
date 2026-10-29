@@ -40,6 +40,19 @@ Las traducciones están en `utils/localization.mjs` y la preferencia compartida 
 de entorno. Para añadir un texto de interfaz usa `t('Texto en español')` y añade sus
 versiones inglesa e italiana al diccionario.
 
+## Rendimiento y navegación
+
+Al navegar entre Preguntas, Estudiar y Simulacro se reutiliza el banco del examen
+ya descargado en esa pestaña. `Actualizar preguntas` o recargar la página obtiene
+los cambios de otros usuarios; guardar, borrar e importar fuerza una actualización.
+La caché vive solo en la app del navegador, no se comparte entre cuentas ni se
+guarda en disco. El servidor sigue validando la sesión y los permisos en cada petición.
+
+`vercel.json` sitúa el servidor en Dublín (`dub1`), cerca de la base Turso actual en
+AWS `eu-west-1`. Si cambia la región de la base, ajusta también esta configuración.
+Los recursos estáticos siguen distribuidos por la CDN; el HTML y la API de las
+cuentas llevan `private, no-store`. El favicon SVG se sirve incluso sin sesión.
+
 ## Arquitectura mínima
 
 - `pages/`: interfaz web
