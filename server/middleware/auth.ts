@@ -23,7 +23,8 @@ export default defineEventHandler(async event => {
     return sendRedirect(event, '/login')
   }
   event.context.quizUser = user
-  if (path.startsWith('/api/') && (path.startsWith('/api/admin/') || !['GET', 'HEAD'].includes(event.method)) && user.role !== 'admin') {
+  const ownAttempt = path === '/api/attempts' && event.method === 'POST'
+  if (path.startsWith('/api/') && (path.startsWith('/api/admin/') || (!['GET', 'HEAD'].includes(event.method) && !ownAttempt)) && user.role !== 'admin') {
     throw createError({ statusCode: 403, statusMessage: 'Solo el administrador puede modificar el banco de preguntas.' })
   }
 })

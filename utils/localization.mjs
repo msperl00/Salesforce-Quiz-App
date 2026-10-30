@@ -2,6 +2,21 @@ export const supportedLanguages = ['es', 'en', 'it']
 
 // Only interface text is translated. Question-bank content is never passed here.
 export const uiMessages = {
+  'Repetir este simulacro': ['Repeat this practice exam', 'Ripeti questa simulazione'],
+  'Mismas preguntas, mismo orden y mismo modo, con las respuestas en blanco.': ['Same questions, order and mode, with blank answers.', 'Stesse domande, stesso ordine e modalità, con risposte vuote.'],
+  'Guardando simulacro en tu historial...': ['Saving this practice exam to your history...', 'Salvataggio della simulazione nella cronologia...'],
+  'Mis últimos 20 simulacros': ['My last 20 practice exams', 'Le mie ultime 20 simulazioni'],
+  'Privados de tu cuenta. Solo se guardan los simulacros finalizados desde esta actualización.': ['Private to your account. Only practice exams finished since this update are saved.', 'Privati del tuo account. Vengono salvate solo le simulazioni terminate dopo questo aggiornamento.'],
+  'Cargando historial...': ['Loading history...', 'Caricamento della cronologia...'],
+  'No se pudo cargar el historial.': ['History could not be loaded.', 'Impossibile caricare la cronologia.'],
+  'Todavía no has guardado ningún simulacro de este examen.': ['You have not saved any practice exams for this exam yet.', 'Non hai ancora salvato simulazioni per questo esame.'],
+  'Repetir simulacro del {date}': ['Repeat practice exam from {date}', 'Ripeti la simulazione del {date}'],
+  'Repetir': ['Repeat', 'Ripeti'],
+  'Preparando el mismo simulacro...': ['Preparing the same practice exam...', 'Preparazione della stessa simulazione...'],
+  'Al repetir desde el historial se usa la versión actual de las preguntas, sin sortear otras.': ['Repeating from history uses the current version of the questions, without drawing new ones.', 'Ripetendo dalla cronologia si usa la versione attuale delle domande, senza estrarne altre.'],
+  'No se pudo guardar el simulacro en tu historial. Puedes repetir el actual sin salir de esta página.': ['This practice exam could not be saved to your history. You can repeat the current one without leaving this page.', 'Impossibile salvare la simulazione nella cronologia. Puoi ripetere quella attuale senza lasciare questa pagina.'],
+  'Reintentar guardado': ['Retry saving', 'Riprova il salvataggio'],
+  'No se pudo repetir el simulacro. Revisa la conexión; si se borró o movió alguna pregunta, ya no se puede repetir completo.': ['This practice exam could not be repeated. Check your connection; if a question was deleted or moved, the full exam can no longer be repeated.', 'Impossibile ripetere la simulazione. Controlla la connessione; se una domanda è stata eliminata o spostata, non è più possibile ripeterla per intero.'],
   'Respuesta según el PDF:': ['Answer according to the PDF:', 'Risposta secondo il PDF:'],
   'Solucionario aportado · página {page}': ['Provided answer key · page {page}', 'Soluzioni fornite · pagina {page}'],
   'Para recordarlo:': ['To remember it:', 'Per ricordarlo:'],

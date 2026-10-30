@@ -1,4 +1,4 @@
-import type { Question, QuestionPayload, QuizExport, Tag } from '~/types/quiz'
+import type { AttemptPayload, SavedAttempt, Question, QuestionPayload, QuizExport, Tag } from '~/types/quiz'
 
 export function useQuizApi() {
   const $fetch = useRequestFetch()
@@ -63,6 +63,14 @@ export function useQuizApi() {
     return $fetch<QuizExport>('/api/export/json', { query: { examId } })
   }
 
+  async function listAttempts() {
+    return (await $fetch<{ attempts: SavedAttempt[] }>('/api/attempts', { query: { examId } })).attempts
+  }
+
+  async function saveAttempt(payload: AttemptPayload) {
+    return $fetch('/api/attempts', { method: 'POST', body: { ...payload, examId }, keepalive: true })
+  }
+
   return {
     examId,
     listQuestions,
@@ -71,6 +79,8 @@ export function useQuizApi() {
     updateQuestion,
     deleteQuestion,
     exportJson,
+    listAttempts,
+    saveAttempt,
     importJson
   }
 }

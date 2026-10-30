@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { migrateDatabase } from '../server/database/schema.mjs'
 
-const names = ['exams', 'questions', 'answers', 'tags', 'question_tags', 'users', 'invitations', 'login_attempts', 'questions_exam_id']
+const names = ['exams', 'questions', 'answers', 'tags', 'question_tags', 'users', 'invitations', 'login_attempts', 'questions_exam_id', 'exam_attempts', 'exam_attempts_owner']
 
 test('an up-to-date schema only needs one read batch and no write transaction', async () => {
   let reads = 0

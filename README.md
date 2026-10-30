@@ -73,6 +73,27 @@ entre simulacros distintos, pues cada sorteo es independiente.
 Durante una sesión la configuración está bloqueada. Descartarla requiere confirmación dentro de la página
 y solo borra las respuestas temporales de esa sesión, nunca preguntas del banco.
 
+Al terminar aparece **Repetir este simulacro**: conserva las preguntas, su orden y
+el modo de la sesión, y reinicia respuestas, posición y resultado. Es inmediato,
+sin otro sorteo ni necesidad de esperar al guardado del historial.
+
+**Mis últimos 20 simulacros** muestra los completados para ese examen por tu cuenta,
+también desde otros dispositivos. El historial se consulta solo al abrir ese apartado
+para no frenar la carga de la página. El resultado aparece sin esperar al guardado;
+si falla, se ofrece reintentar, con un identificador que impide duplicados.
+Los descartados y los anteriores a esta actualización no se pueden recuperar.
+
+Al repetir desde el historial se carga la versión actual del banco y se recuperan los
+mismos identificadores en el mismo orden. Si falta una pregunta o cambió de examen,
+se avisa sin sustituirla ni empezar un simulacro incompleto. No se guardan respuestas
+personales ni copias de las soluciones: solo fecha, modo e identificadores de preguntas.
+El criterio del PDF y el comportamiento de cada modo se mantienen.
+
+La tabla `exam_attempts` y su índice se crean con la migración habitual de SQLite/Turso,
+sin borrar bancos ni usuarios. Sus endpoints exigen sesión y filtran por el usuario
+autenticado; los miembros pueden guardar su propio historial, pero no editar el banco.
+En modo local sin cuentas se usa el propietario local 0.
+
 ## Apoyos de memoria de Peñíscola
 
 `content/peniscola-2026/` contiene explicaciones breves en castellano y sus

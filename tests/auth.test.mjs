@@ -48,6 +48,8 @@ test('accounts protect pages, invitations, member writes and revoked sessions', 
     await request('/favicon.ico', { status: 307 })
     await request('/api/exams', { status: 401 })
     await request('/api/questions/1/image', { status: 401 })
+    await request('/api/attempts?examId=1', { status: 401 })
+    await request('/api/attempts', { method: 'POST', body: {}, status: 401 })
     await request('/api/auth/login', { method: 'POST', body: { email: env.QUIZ_ADMIN_EMAIL, password: 'wrong' }, status: 401 })
     const login = await request('/api/auth/login', { method: 'POST', body: { email: env.QUIZ_ADMIN_EMAIL, password: env.QUIZ_ADMIN_PASSWORD } })
     const owner = sessionCookie(login)
@@ -81,6 +83,22 @@ test('accounts protect pages, invitations, member writes and revoked sessions', 
     await request('/exams', { cookie: friend })
     await request('/api/exams', { method: 'POST', cookie: friend, body: { name: 'Forbidden' }, status: 403 })
     await request('/api/admin/invitations', { method: 'POST', cookie: friend, body: { email: 'third@example.com' }, status: 403 })
+    const question = (await (await request('/api/questions', { method: 'POST', cookie: owner,
+      body: { examId: 1, prompt: 'History fixture', answers: [{ text: 'Yes', isCorrect: true }, { text: 'No', isCorrect: false }], tags: [] } })).json()).question
+    const attempt = { id: '00000000-0000-4000-8000-000000000001', examId: 1, mode: 'exam', questionIds: [question.id], userId: ownerMe.user.id }
+    await request('/api/attempts', { method: 'POST', cookie: friend, body: attempt, origin: 'https://evil.example', status: 403 })
+    await request('/api/attempts', { method: 'POST', cookie: friend, body: attempt, origin: base })
+    await request('/api/attempts', { method: 'POST', cookie: friend, body: attempt })
+    const friendHistory = (await (await request(`/api/attempts?examId=1&userId=${ownerMe.user.id}`, { cookie: friend })).json()).attempts
+    assert.equal(friendHistory.length, 1)
+    assert.deepEqual(friendHistory[0].questionIds, [question.id])
+    assert.equal((await (await request('/api/attempts?examId=1', { cookie: owner })).json()).attempts.length, 0)
+    await request('/api/attempts', { method: 'POST', cookie: owner, body: { ...attempt, mode: 'practice' } })
+    assert.equal((await (await request('/api/attempts?examId=1', { cookie: friend })).json()).attempts[0].mode, 'exam')
+    assert.equal((await (await request('/api/attempts?examId=1', { cookie: owner })).json()).attempts[0].mode, 'practice')
+    await request('/api/questions', { method: 'POST', cookie: friend, body: { examId: 1, prompt: 'Forbidden' }, status: 403 })
+    await request('/api/attempts/extra', { method: 'POST', cookie: friend, body: attempt, status: 403 })
+    await request('/api/attempts', { method: 'POST', cookie: friend, body: { ...attempt, id: 'invalid' }, status: 400 })
     await request('/api/auth/register', { method: 'POST', body: { email: 'friend@example.com', password: 'a-friend-password', token }, status: 400 })
     for (let i = 0; i < 10; i++) await request('/api/auth/login', { method: 'POST', body: { email: 'missing@example.com', password: 'wrong' }, status: 401 })
     await request('/api/auth/login', { method: 'POST', body: { email: 'missing@example.com', password: 'wrong' }, status: 429 })

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { Question, SessionMode, Tag } from '~/types/quiz'
+import type { AttemptPayload, SavedAttempt, Question, SessionMode, Tag } from '~/types/quiz'
 import { questionTags, sampleQuestions } from '~/utils/quiz.mjs'
 import { allowsMultipleAnswers, canRevealAnswers, evaluateSelection, selectAnswer } from '~/utils/exam-session.mjs'
 import { answerBadge, answerFeedback } from '~/utils/pdf-solution.mjs'
+import { replayQuestions } from '~/utils/replay.mjs'
 
 const api = useQuizApi()
-const { t } = useLanguage()
+const { t, language } = useLanguage()
 
 const { data: allQuestions, pending, error, refresh } = await useQuestionBank(api)
 const tags = computed<(Tag & { count: number })[]>(() => questionTags(allQuestions.value))
@@ -24,6 +25,17 @@ const scoreHeading = ref<HTMLHeadingElement | null>(null)
 const countInput = ref<HTMLInputElement | null>(null)
 const discardTrigger = ref<HTMLButtonElement | null>(null)
 const cancelDiscard = ref<HTMLButtonElement | null>(null)
+const attemptId = ref('')
+const sessionTag = ref('')
+const attempts = ref<SavedAttempt[]>([])
+const historyPending = ref(false)
+const historyLoaded = ref(false)
+const historyFailed = ref(false)
+const repeating = ref(false)
+const repeatFailed = ref(false)
+const saving = ref(false)
+const saveFailed = ref(false)
+const pendingSaves = ref<Record<string, AttemptPayload>>({})
 
 const currentQuestion = computed(() => examQuestions.value[currentIndex.value] || null)
 const currentSelection = computed(() => currentQuestion.value ? answersByQuestion.value[currentQuestion.value.id] || [] : [])
@@ -54,16 +66,87 @@ watch(pool, (next, previous) => {
 })
 
 function startExam() {
-  if (!validCount.value || pending.value || inProgress.value) return
-  examQuestions.value = sampleQuestions(pool.value, desiredCount.value)
-  sessionMode.value = mode.value
+  if (!validCount.value || pending.value || inProgress.value || repeating.value) return
+  beginSession(sampleQuestions(pool.value, desiredCount.value), mode.value)
+}
 
+function beginSession(questions: Question[], chosenMode: SessionMode, scroll = false) {
+  if (!questions.length || inProgress.value) return
+  examQuestions.value = [...questions]
+  sessionMode.value = chosenMode
+  sessionTag.value = selectedTag.value
+  attemptId.value = crypto.randomUUID()
   answersByQuestion.value = {}
   currentIndex.value = 0
   started.value = true
   submitted.value = false
   discardRequested.value = false
-  nextTick(() => questionHeading.value?.focus({ preventScroll: true }))
+  repeatFailed.value = false
+  nextTick(() => questionHeading.value?.focus({ preventScroll: !scroll }))
+}
+
+function repeatCurrentExam() {
+  if (!submitted.value || !examQuestions.value.length || repeating.value) return
+  mode.value = sessionMode.value
+  desiredCount.value = examQuestions.value.length
+  selectedTag.value = sessionTag.value
+  beginSession(examQuestions.value, sessionMode.value, true)
+}
+
+async function loadHistory(force = false) {
+  if (historyPending.value || (historyLoaded.value && !force)) return
+  historyPending.value = true
+  historyFailed.value = false
+  try {
+    attempts.value = await api.listAttempts()
+    historyLoaded.value = true
+  } catch { historyFailed.value = true }
+  finally { historyPending.value = false }
+}
+
+function openHistory(event: Event) {
+  if ((event.target as HTMLDetailsElement).open) void loadHistory(true)
+}
+
+function formatAttempt(attempt: SavedAttempt) {
+  return new Intl.DateTimeFormat(language.value, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(attempt.completedAt))
+}
+
+async function repeatSavedExam(attempt: SavedAttempt) {
+  if (inProgress.value || repeating.value || pending.value) return
+  repeating.value = true
+  repeatFailed.value = false
+  try {
+    await refresh()
+    if (error.value) throw error.value
+    const questions = replayQuestions(allQuestions.value, attempt.questionIds, api.examId)
+    if (!questions) throw new Error('Unavailable questions')
+    mode.value = attempt.mode
+    desiredCount.value = questions.length
+    selectedTag.value = ''
+    beginSession(questions, attempt.mode, true)
+  } catch { repeatFailed.value = true }
+  finally { repeating.value = false }
+}
+
+async function savePendingAttempts() {
+  if (saving.value) return
+  saving.value = true
+  saveFailed.value = false
+  try {
+    // Keep each completion until acknowledged; retries reuse its ID and cannot duplicate it.
+    while (Object.keys(pendingSaves.value).length) {
+      const payload = Object.values(pendingSaves.value)[0]
+      await api.saveAttempt(payload)
+      delete pendingSaves.value[payload.id]
+    }
+    if (historyLoaded.value) await loadHistory(true)
+  } catch { saveFailed.value = true }
+  finally {
+    saving.value = false
+    // A new completion can arrive while the refreshed history is still loading.
+    if (!saveFailed.value && Object.keys(pendingSaves.value).length) void savePendingAttempts()
+  }
 }
 
 function discardExam() {
@@ -88,7 +171,11 @@ function keepExam() {
 }
 
 function submitExam() {
+  if (!inProgress.value) return
   submitted.value = true
+  pendingSaves.value[attemptId.value] = { id: attemptId.value, examId: api.examId,
+    mode: sessionMode.value, questionIds: examQuestions.value.map(question => question.id) }
+  void savePendingAttempts()
   nextTick(() => scoreHeading.value?.focus())
 }
 
@@ -126,6 +213,11 @@ const score = computed(() => {
 <template>
   <div class="stack reading-page">
     <ExamHeading :exam-id="api.examId" />
+    <div v-if="saveFailed" class="banner warning" role="alert">
+      {{ t('No se pudo guardar el simulacro en tu historial. Puedes repetir el actual sin salir de esta página.') }}
+      <button class="btn ghost small" type="button" :disabled="saving" @click="savePendingAttempts">{{ t('Reintentar guardado') }}</button>
+    </div>
+    <div v-if="repeatFailed" class="banner warning" role="alert">{{ t('No se pudo repetir el simulacro. Revisa la conexión; si se borró o movió alguna pregunta, ya no se puede repetir completo.') }}</div>
     <div v-if="pending" class="banner" role="status">{{ t('Cargando preguntas...') }}</div>
     <div v-if="error" class="banner warning" role="alert">
       {{ t('No se pudieron cargar las preguntas.') }}
@@ -141,7 +233,7 @@ const score = computed(() => {
         <p class="muted" role="status" aria-live="polite">{{ inProgress ? t('{count} preguntas', { count: examQuestions.length }) : t(pool.length === 1 ? '1 pregunta disponible' : '{count} preguntas disponibles', { count: pool.length }) }}</p>
       </div>
 
-      <fieldset v-show="!inProgress" class="mode-picker" :disabled="inProgress">
+      <fieldset v-show="!inProgress" class="mode-picker" :disabled="inProgress || repeating">
         <legend>{{ t('Modo de sesión') }}</legend>
         <label class="mode-option" :class="{ selected: mode === 'practice' }">
           <input v-model="mode" type="radio" name="session-mode" value="practice">
@@ -156,7 +248,7 @@ const score = computed(() => {
       <div v-show="!inProgress" class="field-grid">
         <div class="field">
           <label for="tag">{{ t('Etiqueta') }}</label>
-          <select id="tag" v-model="selectedTag" :disabled="started && !submitted">
+          <select id="tag" v-model="selectedTag" :disabled="inProgress || repeating">
             <option value="">{{ t('Todas ({count})', { count: allQuestions.length }) }}</option>
             <option v-for="tag in tags" :key="tag.id" :value="tag.name">{{ tag.name }} ({{ tag.count }})</option>
           </select>
@@ -174,7 +266,7 @@ const score = computed(() => {
             step="1"
             :aria-describedby="!validCount && pool.length ? 'count-help count-error' : 'count-help'"
             :aria-invalid="pool.length > 0 && !validCount"
-            :disabled="started && !submitted"
+            :disabled="inProgress || repeating"
           >
           <p v-if="pool.length" id="count-help" class="muted" style="margin: 0;">
             {{ t('Puedes elegir entre 1 y {count} preguntas.', { count: pool.length }) }}
@@ -197,15 +289,15 @@ const score = computed(() => {
       </div>
 
       <div class="actions" style="margin-top: 1rem;">
-        <button v-if="!inProgress" class="btn primary" type="button" :disabled="pending || !validCount" @click="startExam">
+        <button v-if="!inProgress" class="btn primary" type="button" :disabled="pending || repeating || !validCount" @click="startExam">
           {{ t(started ? 'Crear otro simulacro aleatorio' : 'Crear simulacro aleatorio') }}
         </button>
-        <button v-if="!inProgress" class="btn ghost" type="button" :disabled="pending" @click="refresh()">{{ t('Actualizar preguntas') }}</button>
+        <button v-if="!inProgress" class="btn ghost" type="button" :disabled="pending || repeating" @click="refresh()">{{ t('Actualizar preguntas') }}</button>
         <button
           class="btn ghost"
           v-if="!inProgress"
           type="button"
-          :disabled="pending || !pool.length || (started && !submitted)"
+          :disabled="pending || repeating || !pool.length || inProgress"
           @click="desiredCount = pool.length"
         >
           {{ t('Usar todas ({count})', { count: pool.length }) }}
@@ -283,6 +375,12 @@ const score = computed(() => {
         </div>
       </div>
 
+      <div class="repeat-actions">
+        <button class="btn primary" type="button" :disabled="repeating" @click="repeatCurrentExam">{{ t('Repetir este simulacro') }}</button>
+        <p class="muted">{{ t('Mismas preguntas, mismo orden y mismo modo, con las respuestas en blanco.') }}</p>
+        <p v-if="saving" class="muted" role="status">{{ t('Guardando simulacro en tu historial...') }}</p>
+      </div>
+
       <div class="stats-grid">
         <article class="stat-card">
           <span class="muted">{{ t('Aciertos') }}</span>
@@ -318,5 +416,29 @@ const score = computed(() => {
         </article>
       </div>
     </section>
+
+    <details v-if="!inProgress" class="panel attempt-history" @toggle="openHistory">
+      <summary>{{ t('Mis últimos 20 simulacros') }}</summary>
+      <div class="stack">
+        <p class="muted">{{ t('Privados de tu cuenta. Solo se guardan los simulacros finalizados desde esta actualización.') }}</p>
+        <p v-if="historyPending" class="muted" role="status">{{ t('Cargando historial...') }}</p>
+        <div v-if="historyFailed" class="banner warning" role="alert">
+          {{ t('No se pudo cargar el historial.') }}
+          <button class="btn ghost small" type="button" :disabled="historyPending" @click="loadHistory(true)">{{ t('Reintentar') }}</button>
+        </div>
+        <p v-if="historyLoaded && !historyPending && !attempts.length" class="muted">{{ t('Todavía no has guardado ningún simulacro de este examen.') }}</p>
+        <ol v-if="attempts.length" class="attempt-list">
+          <li v-for="attempt in attempts" :key="attempt.id" class="attempt-row">
+            <div>
+              <strong>{{ t('{count} preguntas', { count: attempt.questionIds.length }) }}</strong>
+              <p class="muted">{{ t(attempt.mode === 'practice' ? 'Simulacro normal' : 'Examen real') }} · <time :datetime="attempt.completedAt">{{ formatAttempt(attempt) }}</time></p>
+            </div>
+            <button class="btn ghost" type="button" :disabled="pending || repeating" :aria-label="t('Repetir simulacro del {date}', { date: formatAttempt(attempt) })" @click="repeatSavedExam(attempt)">{{ t('Repetir') }}</button>
+          </li>
+        </ol>
+        <p v-if="repeating" class="muted" role="status">{{ t('Preparando el mismo simulacro...') }}</p>
+        <p class="muted">{{ t('Al repetir desde el historial se usa la versión actual de las preguntas, sin sortear otras.') }}</p>
+      </div>
+    </details>
   </div>
 </template>

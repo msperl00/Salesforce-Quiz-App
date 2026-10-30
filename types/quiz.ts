@@ -57,3 +57,18 @@ export interface ExamSubmission {
 }
 
 export type SessionMode = 'practice' | 'exam'
+
+export interface SavedAttempt {
+  id: string
+  examId: number
+  mode: SessionMode
+  questionIds: number[]
+  completedAt: string
+}
+
+export interface AttemptPayload {
+  id: string
+  examId: number
+  mode: SessionMode
+  questionIds: number[]
+}
