@@ -79,6 +79,9 @@ y solo borra las respuestas temporales de esa sesión, nunca preguntas del banco
 fuentes para las 415 preguntas. Se añaden al texto de solución ya existente,
 sin traducir los enunciados ni cambiar claves, opciones o notas. Las claves
 dudosas se señalan, no se corrigen silenciosamente.
+La corrección de Peñíscola sigue exclusivamente el solucionario PDF aportado:
+las propuestas externas no se aplican. La solución muestra letra y página de
+la clave; las aclaraciones y notas están separadas de la respuesta que puntúa.
 Consulta el README de esa carpeta antes de aplicar `npm run db:explain-peniscola`:
 por defecto solo comprueba y para actualizar exige `--apply`, crea una copia
 privada y verifica que el banco no haya cambiado. No se ejecuta al desplegar.

@@ -129,12 +129,7 @@ function previousQuestion() {
       </div>
 
       <div v-if="reveal" class="stack" style="margin-top: 1rem;">
-        <div v-if="currentQuestion.explanation" class="banner success solution-text">
-          <strong>{{ t('Explicación:') }}</strong> {{ currentQuestion.explanation }}
-        </div>
-        <div v-if="currentQuestion.note" class="banner warning">
-          <strong>{{ t('Nota:') }}</strong> {{ currentQuestion.note }}
-        </div>
+        <QuestionSolution :question="currentQuestion" />
       </div>
 
     </section>

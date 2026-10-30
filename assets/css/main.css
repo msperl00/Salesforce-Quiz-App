@@ -275,6 +275,16 @@ input[type="radio"] {
 .answer-instructions { font-size: 0.9rem; }
 .feedback-message { margin-bottom: 0.75rem; }
 .solution-text { white-space: pre-line; overflow-wrap: anywhere; }
+.pdf-solution { gap: 0.75rem; }
+.pdf-key { font-weight: 600; margin: 0.5rem 0; overflow-wrap: anywhere; }
+.pdf-reference { font-size: 0.82rem; margin: 0; }
+.pdf-learning { margin-top: 1rem; }
+.pdf-learning p, .pdf-source-details p { margin: 0.4rem 0 0; }
+.pdf-key-notice { font-size: 0.88rem; }
+.pdf-source-details { border: 1px solid var(--control-line); border-radius: 14px; padding: 0.85rem; min-width: 0; }
+.pdf-source-details summary { cursor: pointer; font-weight: 600; min-height: 44px; align-content: center; overflow-wrap: anywhere; }
+.pdf-source-details summary:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; border-radius: 4px; }
+.pdf-source-details[open] > .stack { margin-top: 0.75rem; }
 
 .exam-heading h2,
 .exam-panel h2 {

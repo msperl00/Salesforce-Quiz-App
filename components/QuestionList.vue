@@ -76,9 +76,7 @@ const emit = defineEmits<{
           <span v-for="tag in question.tags" :key="tag.id" class="tag">{{ tag.name }}</span>
         </div>
 
-        <p v-if="question.explanation" class="muted solution-text" style="margin-bottom: 0;">
-          {{ question.explanation }}
-        </p>
+        <QuestionSolution :question="question" compact :show-note="false" />
       </article>
     </div>
 

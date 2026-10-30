@@ -11,6 +11,24 @@ En esos casos el apoyo debe advertirlo, no justificarla como un hecho. Las
 cifras institucionales o de competiciones pueden depender de la edición.
 Los contenidos de salud y legislación no son consejos para beber o conducir.
 
+## Criterio de corrección confirmado
+
+El usuario confirmó el 30 de octubre de 2026 que la corrección debe seguir
+siempre el PDF de respuestas aportado. No se aplican las propuestas de la
+revisión externa. En concreto se mantienen 97=b, 170=a, 218=a, 304=b, 344=c,
+369=d y 396=c, tal como figuran en ese documento.
+
+La interfaz muestra «Respuesta según el PDF» con letra, opción y página del
+solucionario. Los aciertos y fallos de esas preguntas se identifican como
+«según el PDF». Las aclaraciones externas quedan en un apartado separado y
+no alteran la selección correcta ni la puntuación. Los textos originales y
+las notas se conservan. En Examen real no se muestran antes de finalizar.
+
+`utils/pdf-solution.mjs` reconoce la referencia documental del banco importado
+y comprueba que la letra citada coincide con la única opción marcada. Si no
+coincide, la interfaz avisa en lugar de atribuir esa clave al PDF. Otros bancos
+sin esa referencia mantienen su presentación habitual.
+
 El programa añade el apoyo al campo `explanation`, sin eliminar el texto previo,
 la nota documental ni las advertencias. Así aparece al mostrar la solución en
 Estudiar, inmediatamente en Simulacro normal y solo al finalizar en Examen real.

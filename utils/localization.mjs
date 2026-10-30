@@ -2,6 +2,17 @@ export const supportedLanguages = ['es', 'en', 'it']
 
 // Only interface text is translated. Question-bank content is never passed here.
 export const uiMessages = {
+  'Respuesta según el PDF:': ['Answer according to the PDF:', 'Risposta secondo il PDF:'],
+  'Solucionario aportado · página {page}': ['Provided answer key · page {page}', 'Soluzioni fornite · pagina {page}'],
+  'Para recordarlo:': ['To remember it:', 'Per ricordarlo:'],
+  'Correcta según el PDF': ['Correct according to the PDF', 'Corretta secondo il PDF'],
+  'Incorrecta según el PDF': ['Incorrect according to the PDF', 'Errata secondo il PDF'],
+  'Respuesta correcta según el PDF.': ['Correct answer according to the PDF.', 'Risposta corretta secondo il PDF.'],
+  'Respuesta incorrecta según el PDF.': ['Incorrect answer according to the PDF.', 'Risposta errata secondo il PDF.'],
+  'Se conserva la clave del PDF. La aclaración no cambia la respuesta que puntúa y no debe usarse como consejo sanitario o legal.': ['The PDF answer key is preserved. The clarification does not change scoring and must not be used as medical or legal advice.', 'La chiave del PDF è conservata. Il chiarimento non modifica il punteggio e non va usato come consiglio sanitario o legale.'],
+  'Aclaraciones y notas (no cambian la clave del PDF)': ['Clarifications and notes (do not change the PDF answer key)', 'Chiarimenti e note (non modificano la chiave del PDF)'],
+  'Texto original de la explicación:': ['Original explanation text:', 'Testo originale della spiegazione:'],
+  'La clave actual no coincide con la referencia del PDF. Revisa esta pregunta antes de usarla para estudiar.': ['The current answer key does not match the PDF reference. Review this question before studying it.', 'La chiave attuale non corrisponde al riferimento del PDF. Controlla questa domanda prima di studiarla.'],
   'Modo de sesión': ['Session mode', 'Modalità della sessione'],
   'Simulacro normal': ['Practice mode', 'Simulazione guidata'],
   'Examen real': ['Exam mode', 'Modalità esame'],

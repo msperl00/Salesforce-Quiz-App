@@ -2,6 +2,7 @@
 import type { Question, SessionMode, Tag } from '~/types/quiz'
 import { questionTags, sampleQuestions } from '~/utils/quiz.mjs'
 import { allowsMultipleAnswers, canRevealAnswers, evaluateSelection, selectAnswer } from '~/utils/exam-session.mjs'
+import { answerBadge, answerFeedback } from '~/utils/pdf-solution.mjs'
 
 const api = useQuizApi()
 const { t } = useLanguage()
@@ -30,8 +31,8 @@ const multipleAnswers = computed(() => currentQuestion.value ? allowsMultipleAns
 const revealAnswers = computed(() => canRevealAnswers(sessionMode.value, submitted.value, currentSelection.value))
 const feedbackStatus = computed(() => currentQuestion.value ? evaluateSelection(currentQuestion.value, currentSelection.value) : 'unanswered')
 const feedbackMessage = computed(() => {
-  if (feedbackStatus.value === 'correct') return 'Respuesta correcta.'
-  if (feedbackStatus.value === 'incorrect') return 'Respuesta incorrecta.'
+  if (feedbackStatus.value === 'correct') return answerFeedback(currentQuestion.value, true)
+  if (feedbackStatus.value === 'incorrect') return answerFeedback(currentQuestion.value, false)
   if (feedbackStatus.value === 'partial') return submitted.value
     ? 'Respuesta incompleta: faltan opciones correctas.'
     : 'Vas bien: aún faltan opciones correctas.'
@@ -264,21 +265,14 @@ const score = computed(() => {
             :checked="(answersByQuestion[currentQuestion.id] || []).includes(answer.id || -1)"
             @change="toggleAnswer(currentQuestion, answer.id, ($event.target as HTMLInputElement).checked)"
           >
-          <span>{{ answer.text }}<span v-if="revealAnswers && (answer.isCorrect || currentSelection.includes(answer.id || -1))" class="answer-status">{{ t(answer.isCorrect ? 'Correcta' : 'Incorrecta') }}</span></span>
+          <span>{{ answer.text }}<span v-if="revealAnswers && (answer.isCorrect || currentSelection.includes(answer.id || -1))" class="answer-status">{{ t(answerBadge(currentQuestion, answer.isCorrect)) }}</span></span>
         </label>
       </div>
 
       <div role="status" aria-live="polite" aria-atomic="true">
         <div v-if="revealAnswers" class="banner feedback-message" :class="{ success: feedbackStatus === 'correct', warning: feedbackStatus === 'incorrect' || (submitted && feedbackStatus !== 'correct') }">{{ t(feedbackMessage) }}</div>
       </div>
-      <div v-if="revealAnswers" class="stack">
-        <div v-if="currentQuestion.explanation" class="banner success solution-text">
-          <strong>{{ t('Explicación:') }}</strong> {{ currentQuestion.explanation }}
-        </div>
-        <div v-if="currentQuestion.note" class="banner warning">
-          <strong>{{ t('Nota:') }}</strong> {{ currentQuestion.note }}
-        </div>
-      </div>
+      <QuestionSolution v-if="revealAnswers" :question="currentQuestion" />
     </section>
 
     <section v-if="score" class="panel" style="padding: 1.25rem;">
@@ -320,7 +314,7 @@ const score = computed(() => {
             <p>{{ question.prompt }}</p>
             <strong>{{ t(isQuestionCorrect(question) ? 'OK' : 'FAIL') }}</strong>
           </div>
-          <p v-if="question.explanation" class="muted solution-text" style="margin-bottom: 0;">{{ question.explanation }}</p>
+          <QuestionSolution :question="question" compact :show-note="false" />
         </article>
       </div>
     </section>
