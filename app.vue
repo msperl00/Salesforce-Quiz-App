@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { focusMovedOutside } from '~/utils/focus.mjs'
+import { initialCachedData } from '~/utils/async-cache.mjs'
+import type { Exam } from '~/types/quiz'
 
 const route = useRoute()
 const { language, setLanguage, t } = useLanguage()
-const pageNames: Record<string, string> = { '/': 'Preguntas', '/study': 'Estudiar', '/exam': 'Simulacro', '/exams': 'Exámenes', '/login': 'Iniciar sesión', '/register': 'Aceptar invitación', '/users': 'Invitar' }
+const pageNames: Record<string, string> = { '/': 'Preguntas', '/guide': 'Guía', '/study': 'Estudiar', '/exam': 'Simulacro', '/exams': 'Exámenes', '/login': 'Iniciar sesión', '/register': 'Aceptar invitación', '/users': 'Invitar' }
 useHead(() => ({
   htmlAttrs: { lang: language.value },
   title: `${t(pageNames[route.path] || 'Exámenes')} | Salesforce Quiz`
 }))
 const { data: account } = await useAccount()
+const { data: examCatalog } = await useFetch<{ exams: Exam[] }>('/api/exams', {
+  key: 'exam-catalog', immediate: Boolean(account.value?.user), getCachedData: initialCachedData
+})
+const selectedExamHasGuide = computed(() => examCatalog.value?.exams.some(exam => exam.id === Number(route.query.examId) && exam.hasGuide))
 const accountMenu = ref<HTMLDetailsElement | null>(null)
 function closeAccountMenu() {
   accountMenu.value?.removeAttribute('open')
@@ -66,9 +72,10 @@ const examQuery = computed(() => ({ examId: route.query.examId }))
       </div>
     </header>
 
-    <nav v-if="account?.user && route.path !== '/exams'" class="nav" :aria-label="t('Navegación principal')">
+    <nav v-if="account?.user && route.path !== '/exams'" class="nav" :class="{ 'nav-with-guide': selectedExamHasGuide }" :aria-label="t('Navegación principal')">
       <NuxtLink to="/exams">{{ t('Exámenes') }}</NuxtLink>
       <template v-if="route.query.examId">
+        <NuxtLink v-if="selectedExamHasGuide" :to="{ path: '/guide', query: examQuery }">{{ t('Guía') }}</NuxtLink>
         <NuxtLink :to="{ path: '/', query: examQuery }">{{ t('Preguntas') }}</NuxtLink>
         <NuxtLink :to="{ path: '/study', query: examQuery }">{{ t('Estudiar') }}</NuxtLink>
         <NuxtLink :to="{ path: '/exam', query: examQuery }">{{ t('Simulacro') }}</NuxtLink>

@@ -28,15 +28,16 @@ function normalize(payload: QuestionPayload) {
 
 async function requireExam(db: Database, id: number) {
   if (!Number.isSafeInteger(id) || id <= 0) throw createError({ statusCode: 400, statusMessage: 'Selecciona un examen valido.' })
-  const exam = (await query(db, 'SELECT id, name FROM exams WHERE id = ?', [id]))[0]
+  const exam = (await query(db, 'SELECT id, name, EXISTS(SELECT 1 FROM study_guides WHERE exam_id = exams.id) AS has_guide FROM exams WHERE id = ?', [id]))[0]
   if (!exam) throw createError({ statusCode: 404, statusMessage: 'Examen no encontrado.' })
-  return { id: Number(exam.id), name: String(exam.name) }
+  return { id: Number(exam.id), name: String(exam.name), hasGuide: Boolean(exam.has_guide) }
 }
 export async function getExam(id: number) { return requireExam(await getDb(), id) }
 export async function listExams(): Promise<Exam[]> {
-  return (await query(await getDb(), `SELECT exams.id, exams.name, COUNT(questions.id) AS count
+  return (await query(await getDb(), `SELECT exams.id, exams.name, COUNT(questions.id) AS count,
+    EXISTS(SELECT 1 FROM study_guides WHERE exam_id = exams.id) AS has_guide
     FROM exams LEFT JOIN questions ON questions.exam_id = exams.id GROUP BY exams.id ORDER BY exams.name COLLATE NOCASE`))
-    .map(row => ({ id: Number(row.id), name: String(row.name), questionCount: Number(row.count) }))
+    .map(row => ({ id: Number(row.id), name: String(row.name), questionCount: Number(row.count), hasGuide: Boolean(row.has_guide) }))
 }
 export async function saveExam(name: unknown, id?: number) {
   if (typeof name !== 'string' || !name.trim() || name.trim().length > 120) {

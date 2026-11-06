@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Exam } from '~/types/quiz'
+import { initialCachedData } from '~/utils/async-cache.mjs'
 const { t } = useLanguage()
 const { data: account } = await useAccount()
 
-const { data, error, refresh } = await useFetch<{ exams: Exam[] }>('/api/exams')
+const { data, error, refresh } = await useFetch<{ exams: Exam[] }>('/api/exams', { key: 'exam-catalog', getCachedData: initialCachedData })
 const name = ref('')
 const editingId = ref<number | null>(null)
 const saving = ref(false)
@@ -84,6 +85,7 @@ async function save() {
           <button v-if="account?.user?.role === 'admin'" class="btn ghost small" :disabled="saving" :aria-label="t('Renombrar {name}', { name: exam.name })" @click="edit(exam)">{{ t('Renombrar') }}</button>
         </div>
         <div class="exam-card-actions">
+          <NuxtLink v-if="exam.hasGuide" class="btn ghost exam-guide-link" :to="{ path: '/guide', query: { examId: exam.id } }">{{ t('Teoría y glosario') }}</NuxtLink>
           <NuxtLink class="btn primary" :to="{ path: '/', query: { examId: exam.id } }">{{ t('Preguntas') }}</NuxtLink>
           <NuxtLink class="btn ghost" :to="{ path: '/study', query: { examId: exam.id } }">{{ t('Estudiar') }}</NuxtLink>
           <NuxtLink class="btn ghost" :to="{ path: '/exam', query: { examId: exam.id } }">{{ t('Simulacro') }}</NuxtLink>

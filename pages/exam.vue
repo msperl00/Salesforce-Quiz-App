@@ -10,7 +10,7 @@ const { t, language } = useLanguage()
 
 const { data: allQuestions, pending, error, refresh } = await useQuestionBank(api)
 const tags = computed<(Tag & { count: number })[]>(() => questionTags(allQuestions.value))
-const selectedTag = ref('')
+const selectedTag = ref(typeof useRoute().query.tag === 'string' ? String(useRoute().query.tag) : '')
 const desiredCount = ref(Math.min(10, allQuestions.value.length) || 1)
 const mode = ref<SessionMode>('practice')
 const sessionMode = ref<SessionMode>('practice')

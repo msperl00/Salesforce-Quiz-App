@@ -8,6 +8,9 @@ import { resolve, join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import test from 'node:test'
 import Database from 'better-sqlite3'
+import { createClient } from '@libsql/client'
+import { pathToFileURL } from 'node:url'
+import { importStudyGuide } from '../server/database/study-guide.mjs'
 
 test('migration, exam isolation, rename and scoped JSON replacement', { timeout: 120000 }, async () => {
   const dir = await mkdtemp(join(tmpdir(), 'quiz-exams-test-'))
@@ -61,6 +64,27 @@ test('migration, exam isolation, rename and scoped JSON replacement', { timeout:
     assert.equal(old.questions[0].examId, general)
     const { exam: a } = await request('/api/exams', 'POST', { name: 'Administrator' })
     const { exam: b } = await request('/api/exams', 'POST', { name: 'Developer' })
+    const guideDb = createClient({ url: pathToFileURL(databasePath).href })
+    try {
+      await importStudyGuide(guideDb, a.id, { version: 1, title: 'Architecture guide', sourceName: 'guide.html',
+        sections: [{ slug: 'security', title: 'Security', subtitle: 'Permissions', kind: 'topic', tag: 'Security',
+          html: '<p>Theory <a href="#glosario">Glossary</a></p>' }],
+        glossary: [{ term: 'FLS', definition: 'Field-level security', aliases: ['Field permissions'] }] })
+    } finally { guideDb.close() }
+    const guide = await request(`/api/guides?examId=${a.id}`)
+    assert.equal(guide.guide.sections[0].title, 'Security')
+    assert.equal(guide.guide.termCount, 1)
+    assert.equal((await request(`/api/guides?examId=${b.id}`)).guide, null)
+    const chapter = await request(`/api/guides/content?examId=${a.id}&section=security`)
+    assert.match(chapter.html, new RegExp(`/guide\\?examId=${a.id}&amp;section=glosario`))
+    assert.equal((await request(`/api/guides/content?examId=${a.id}&section=glosario`)).glossary[0].term, 'FLS')
+    await request(`/api/guides/content?examId=${b.id}&section=security`, 'GET', undefined, 404)
+    await request(`/api/guides/content?examId=${a.id}&section=../security`, 'GET', undefined, 400)
+    const guidePage = await fetch(`${base}/guide?examId=${a.id}&section=security`)
+    const guideHtml = await guidePage.text()
+    assert.equal(guidePage.status, 200)
+    assert.match(guideHtml, /Architecture guide/)
+    assert.match(guideHtml, /Practicar este tema/)
     assert.equal((await request(`/api/questions?examId=${b.id}`)).questions.length, 0)
     const { question: qa } = await request('/api/questions', 'POST', payload(a.id, 'Admin only', 'Security'))
     const { question: qb } = await request('/api/questions', 'POST', payload(b.id, 'Dev only', 'Apex'))

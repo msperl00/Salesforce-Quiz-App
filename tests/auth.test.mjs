@@ -50,6 +50,8 @@ test('accounts protect pages, invitations, member writes and revoked sessions', 
     await request('/api/questions/1/image', { status: 401 })
     await request('/api/attempts?examId=1', { status: 401 })
     await request('/api/attempts', { method: 'POST', body: {}, status: 401 })
+    await request('/api/guides?examId=1', { status: 401 })
+    await request('/api/guides/content?examId=1&section=glosario', { status: 401 })
     await request('/api/auth/login', { method: 'POST', body: { email: env.QUIZ_ADMIN_EMAIL, password: 'wrong' }, status: 401 })
     const login = await request('/api/auth/login', { method: 'POST', body: { email: env.QUIZ_ADMIN_EMAIL, password: env.QUIZ_ADMIN_PASSWORD } })
     const owner = sessionCookie(login)

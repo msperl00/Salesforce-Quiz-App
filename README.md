@@ -224,6 +224,53 @@ El administrador gestiona el banco común; los miembros pueden consultar, estudi
 
 Las imágenes tienen un máximo de 2 MiB y se descargan por separado. La importación admite hasta 100 preguntas por petición y archivos JSON de hasta 3 MB. Para bancos mayores divide el archivo. La exportación desde la interfaz reúne las imágenes en el navegador; el endpoint directo de exportación tiene un límite de 4 MB.
 
+## Importar Integration Architect desde Daypo
+
+La conversión conserva las opciones y respuestas del XML, las explicaciones, los
+diagramas PNG y la etiqueta de cada tema. Identifica las variantes por enunciado,
+opciones y clave de respuestas, y añade el número de origen en la nota. El material
+debe tener `Daypo_Completo.xml`, `Daypo por temas/` y `Daypo - diagramas/`.
+
+```bash
+python3 scripts/convert-daypo.py '/ruta/Integration Architect/Daypos' output/integration-architect
+node --env-file-if-exists=.env scripts/import-question-bank.mjs output/integration-architect/integration-architect-01.json output/integration-architect/integration-architect-02.json
+```
+
+El segundo comando solo valida. Añade `--apply` para crear la certificación en la
+base configurada en `.env` (Turso si está configurado; SQLite en caso contrario).
+Antes guarda una copia del banco existente en `data/bank-before-import-*.json`, sin
+cuentas ni contraseñas. La creación es atómica y rechaza un nombre de examen que ya
+exista; no reemplaza ni mezcla preguntas de otras certificaciones. Los JSON también
+se pueden importar desde la interfaz, eligiendo **añadir** para cada parte.
+
+Los archivos de material y las copias de seguridad quedan en carpetas ignoradas por
+Git; no se incluyen como recursos públicos ni se cargan automáticamente al arrancar.
+
+## Guías de teoría y glosarios
+
+Cada certificación puede tener una guía propia en Turso o SQLite, asociada por su
+ID: renombrar el examen no rompe la asociación. **Guía** aparece en la navegación y
+**Teoría y glosario** en la tarjeta del examen cuando existe contenido. Los capítulos
+conservan casos, soluciones desplegables, autoevaluaciones, tablas y fuentes. El
+glosario permite buscar por término, sigla, alias o definición. El contenido conserva
+el idioma original; los controles siguen el idioma de la interfaz.
+
+Para importar la guía HTML de Integration Architect al examen correspondiente:
+
+```bash
+python3 scripts/convert-study-guide.py '/ruta/Guia Integration Architect.html' output/integration-architect/guide.json
+node --env-file-if-exists=.env scripts/import-study-guide.mjs output/integration-architect/guide.json 3
+```
+
+Sustituye `3` por el ID del examen de destino. El segundo comando solo valida;
+`--apply` crea la guía y sus capítulos en una única operación, sin sobrescribir una
+guía existente ni modificar preguntas. El conversor elimina scripts, formularios,
+estilos y atributos ejecutables del HTML. La lectura se sirve por API autenticada,
+con un capítulo por petición, y no se publica la guía como archivo estático.
+
+Los botones de práctica y simulacro de cada capítulo conservan el examen y filtran
+por su etiqueta. No se guarda progreso de lectura en esta primera versión.
+
 No subas `.env`, tokens, contraseñas ni `data/` a GitHub. Para pruebas locales sin cuentas deja las variables Turso vacías y `NUXT_AUTH_MODE=local`; así solo se usa SQLite en tu equipo.
 
 La actualización de dependencias mantiene Nuxt 3. La auditoría aún informa de avisos en herramientas transitivas de desarrollo y compilación (devtools, simple-git, glob y certificados de desarrollo). No uses `npm audit fix --force`: propone una versión antigua de Nuxt. Revisa esos avisos al actualizar las herramientas; devtools permanece desactivado y esas herramientas no se incluyen en el servidor compilado.

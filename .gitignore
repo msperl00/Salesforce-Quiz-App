@@ -16,3 +16,4 @@ data/*.json
 !.env.example
 .vercel
 output/
+__pycache__/

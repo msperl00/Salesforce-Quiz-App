@@ -1,6 +1,6 @@
 export async function migrateDatabase(client) {
   const requiredNames = ['exams', 'questions', 'answers', 'tags', 'question_tags',
-    'users', 'invitations', 'login_attempts', 'questions_exam_id', 'exam_attempts', 'exam_attempts_owner']
+    'users', 'invitations', 'login_attempts', 'questions_exam_id', 'exam_attempts', 'exam_attempts_owner', 'study_guides', 'guide_sections']
   const [objects, fields] = await client.batch([
     { sql: `SELECT name FROM sqlite_master WHERE name IN (${requiredNames.map(() => '?').join(',')})`, args: requiredNames },
     { sql: 'PRAGMA table_info(questions)', args: [] }
@@ -42,6 +42,13 @@ export async function migrateDatabase(client) {
     }
     await tx.execute('CREATE INDEX IF NOT EXISTS questions_exam_id ON questions(exam_id)')
     await tx.execute('CREATE INDEX IF NOT EXISTS exam_attempts_owner ON exam_attempts(user_id, exam_id, completed_at DESC)')
+    await tx.execute(`CREATE TABLE IF NOT EXISTS study_guides (exam_id INTEGER PRIMARY KEY,
+      title TEXT NOT NULL, source_name TEXT NOT NULL, glossary_json TEXT NOT NULL,
+      created_at TEXT NOT NULL, FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE)`)
+    await tx.execute(`CREATE TABLE IF NOT EXISTS guide_sections (exam_id INTEGER NOT NULL,
+      slug TEXT NOT NULL, title TEXT NOT NULL, subtitle TEXT NOT NULL DEFAULT '',
+      kind TEXT NOT NULL, tag TEXT NOT NULL DEFAULT '', html TEXT NOT NULL, position INTEGER NOT NULL,
+      PRIMARY KEY (exam_id, slug), FOREIGN KEY (exam_id) REFERENCES study_guides(exam_id) ON DELETE CASCADE)`)
     await tx.commit()
   } finally { tx.close() }
 }

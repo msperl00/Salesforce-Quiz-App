@@ -49,6 +49,22 @@ export interface Exam {
   id: number
   name: string
   questionCount: number
+  hasGuide?: boolean
+}
+
+export interface GuideSection {
+  slug: string
+  title: string
+  subtitle: string
+  kind: 'topic' | 'reference'
+  tag: string
+}
+
+export interface StudyGuide {
+  title: string
+  sourceName: string
+  termCount: number
+  sections: GuideSection[]
 }
 
 export interface ExamSubmission {

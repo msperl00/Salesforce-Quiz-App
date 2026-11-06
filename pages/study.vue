@@ -7,7 +7,7 @@ const { t } = useLanguage()
 
 const { data: allQuestions, pending, error, refresh } = await useQuestionBank(api)
 const tags = computed<Tag[]>(() => questionTags(allQuestions.value))
-const selectedTag = ref('')
+const selectedTag = ref(typeof useRoute().query.tag === 'string' ? String(useRoute().query.tag) : '')
 const currentIndex = ref(0)
 const reveal = ref(false)
 const shuffleMode = ref(false)
