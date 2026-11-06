@@ -271,6 +271,20 @@ con un capítulo por petición, y no se publica la guía como archivo estático.
 Los botones de práctica y simulacro de cada capítulo conservan el examen y filtran
 por su etiqueta. No se guarda progreso de lectura en esta primera versión.
 
+La revisión documentada de Integration Architect del 6 de noviembre de 2026 está en
+`content/integration-architect/review-2026-11-06.json`: corrige los callouts largos y
+aclara permisos de Apex según la versión de API, recuperación de eventos y External
+Client Apps, con fuentes oficiales. Se valida contra el texto existente antes de
+aplicarse; no cambia las claves de respuesta de Daypo.
+
+```bash
+node --env-file-if-exists=.env scripts/review-study-guide.mjs content/integration-architect/review-2026-11-06.json 3
+```
+
+`--apply` guarda una copia privada previa de la guía en `data/` y actualiza los
+capítulos y definiciones en una única operación. Si el texto original cambió o la
+revisión ya está aplicada, se detiene antes de escribir.
+
 No subas `.env`, tokens, contraseñas ni `data/` a GitHub. Para pruebas locales sin cuentas deja las variables Turso vacías y `NUXT_AUTH_MODE=local`; así solo se usa SQLite en tu equipo.
 
 La actualización de dependencias mantiene Nuxt 3. La auditoría aún informa de avisos en herramientas transitivas de desarrollo y compilación (devtools, simple-git, glob y certificados de desarrollo). No uses `npm audit fix --force`: propone una versión antigua de Nuxt. Revisa esos avisos al actualizar las herramientas; devtools permanece desactivado y esas herramientas no se incluyen en el servidor compilado.

@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-06",
+  "sections": {
+    "outbound": {
+      "replacements": [
+        ["si muchos usuarios esperan a un servicio lento, se agota el límite de peticiones largas concurrentes", "un servicio lento puede empeorar la experiencia del usuario; el tiempo de callout se excluye del límite de peticiones largas desde Winter '20"],
+        ["Servicio lento (decenas de segundos) con un usuario esperando: libera el hilo del servidor y no cuenta como long-running request", "Servicio lento con un usuario esperando: permite gestionar la respuesta en un callback y mejora la experiencia; todos los callouts están excluidos del límite de long-running requests"],
+        ["<li><b>Concurrent long-running requests</b>: como máximo 10 transacciones síncronas de más de 5 s simultáneas por org. Muchos usuarios esperando un servicio lento agotan este límite → usar Continuation o un patrón asíncrono.</li>", "<li><b>Concurrent long-running requests</b>: el tiempo de callout se excluye de este límite desde Winter '20. Continuation se elige por experiencia de usuario, callbacks y llamadas paralelas; no aporta una exención adicional frente a un callout normal.</li>"],
+        ["Un callout síncrono largo bloquea un hilo del servidor y cuenta para el límite de peticiones largas concurrentes. <b>Continuation</b> hace el callout de forma asíncrona, libera el hilo y devuelve la respuesta a la UI (hasta 120 s).", "El tiempo de un callout no cuenta para el límite de peticiones largas concurrentes desde Winter '20. <b>Continuation</b> sigue siendo útil para gestionar llamadas lentas y procesar la respuesta mediante un callback, con un máximo de 120 s."],
+        ["Muchas llamadas lentas a la vez agotan el límite de peticiones largas concurrentes.", "La latencia, la capacidad del servicio remoto y los timeouts siguen siendo criterios de diseño, pero el tiempo de callout no consume el límite de long-running requests."],
+        ["Un callout largo bloquea un hilo del servidor y cuenta para el límite de peticiones síncronas largas concurrentes. Continuation hace el callout de forma asíncrona, libera el hilo y devuelve la respuesta a la UI cuando llega.", "Desde Winter '20, el tiempo de todos los callouts se excluye del límite de peticiones síncronas largas. Continuation aporta una mejor experiencia con respuestas mediante callback y llamadas paralelas, no una exención exclusiva de ese límite."]
+      ],
+      "notes": [{"title": "Callout lento y timeout intermedio", "text": "Continuation no amplía el timeout de un API Gateway. Si el servicio tarda 90 s y el gateway corta a los 9 s, hay que desacoplar la petición y recibir la respuesta por callback o evento. La ventaja actual de Continuation es la experiencia de usuario y la gestión de respuestas, no evitar un límite que ya excluye todos los callouts.", "source": "https://developer.salesforce.com/docs/platform/lwc/guide/apex-continuations.html"}]
+    },
+    "chuleta": {
+      "replacements": [["<tr><td>Concurrent long-running requests</td><td>10 transacciones síncronas &gt; 5 s por org</td></tr>", "<tr><td>Concurrent long-running requests</td><td>El tiempo de callout está excluido desde Winter '20; Continuation no aporta una exención adicional.</td></tr>"]]
+    },
+    "examen": {
+      "replacements": [["Límite: 10 transacciones síncronas de más de 5 s concurrentes por org.", "Desde Winter '20, todos los callouts están excluidos del límite de long-running requests."]],
+      "notes": [{"title": "Versión de examen y versión de plataforma", "text": "La guía oficial consultada sigue indicando Summer '23, 60 preguntas puntuables y hasta cinco adicionales, 105 minutos y 67 % para aprobar. Distingue ese contexto de los cambios actuales: los permisos de Apex dependen de la versión de API, y las nuevas integraciones OAuth deben considerar External Client Apps.", "source": "https://help.salesforce.com/s/articleView?id=005298980&language=en_US&type=1"}]
+    },
+    "eventos": {
+      "notes": [{"title": "Recuperación de eventos y duplicados", "text": "Platform Events y CDC se conservan 72 horas, sin garantía de retención posterior. En Pub/Sub API se usan LATEST, EARLIEST y CUSTOM, no los valores -1/-2 de CometD. Conserva el replay_id como dato opaco; no calcules el siguiente ni lo uses como identificador global del mensaje. Para identificar un Platform Event recibido utiliza event.id; CDC requiere sus propias claves de correlación. Diseña consumidores idempotentes y recuperación fuera del bus si la caída supera la retención.", "source": "https://developer.salesforce.com/docs/platform/pub-sub-api/guide/event-message-durability.html"}, {"title": "Punto de recuperación", "text": "Con CUSTOM se reanuda después del replay_id guardado. La referencia actual indica guardar el último ID del mensaje procesado o del keepalive recibido, el que sea posterior. EARLIEST recupera desde el primer evento aún retenido; no reconstruye eventos ya purgados.", "source": "https://developer.salesforce.com/docs/platform/pub-sub-api/references/methods/subscribe-rpc.html"}]
+    },
+    "seguridad": {
+      "notes": [{"title": "Apex y permisos según la versión de API", "text": "Desde API 67.0, las operaciones de base de datos de Apex usan user mode por defecto y aplican los permisos de objeto, FLS y sharing del usuario. En API 66.0 y anteriores, system mode es el valor por defecto. En system mode se omiten los permisos de objeto y campo; el acceso a registros depende de la declaración de sharing de la clase. No confundas with sharing con la comprobación de FLS. Especifica el modo de acceso y prueba con el usuario de integración real.", "source": "https://developer.salesforce.com/docs/platform/apex-dev/references/apex-dev/apex-classes-enforce-usermode.html"}]
+    },
+    "identidad": {
+      "notes": [{"title": "External Client Apps para nuevas integraciones", "text": "Desde Spring '26 la creación de Connected Apps está restringida. Las existentes continúan funcionando; si es imprescindible crear otra, Salesforce Support debe habilitarlo. Salesforce recomienda External Client Apps. Distingue la app OAuth que autoriza llamadas entrantes de Named Credential y External Credential, que configuran autenticación para llamadas salientes.", "source": "https://help.salesforce.com/s/articleView?id=connected_app_create.htm&language=en_US&type=0"}]
+    }
+  },
+  "glossary": {
+    "Concurrent long-running requests": "Límite de concurrencia de peticiones largas. Desde Winter '20, el tiempo de todos los callouts está excluido; Continuation no aporta una exención exclusiva frente a los callouts normales.",
+    "ReplayId": "Posición opaca de un evento en el stream para recuperar mensajes retenidos. No es una clave global única ni una secuencia que deba calcularse. CometD usa -1/-2; Pub/Sub API usa LATEST/EARLIEST/CUSTOM con replay_id en bytes.",
+    "System mode / User mode": "User mode aplica permisos de objeto, FLS y sharing. System mode omite permisos de objeto y campo; el sharing de la clase determina el acceso a registros. Las operaciones de base de datos usan user mode por defecto desde API 67.0, y system mode en API 66.0 y anteriores."
+  }
+}
