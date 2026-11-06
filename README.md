@@ -285,6 +285,23 @@ node --env-file-if-exists=.env scripts/review-study-guide.mjs content/integratio
 capítulos y definiciones en una única operación. Si el texto original cambió o la
 revisión ya está aplicada, se detiene antes de escribir.
 
+La revisión técnica de las preguntas Daypo está documentada en
+`content/integration-architect/DAYPO-REVIEW.md`. Conserva los originales y distingue
+claves corregidas, explicaciones aclaradas y preguntas pendientes. Las pendientes
+se identifican mediante una línea explícita en su nota, se muestran con aviso en
+Preguntas/Estudiar y se excluyen de ambos modos de simulacro y de las repeticiones
+del historial. Las demás certificaciones conservan su comportamiento.
+
+```bash
+node --env-file-if-exists=.env scripts/review-daypo.mjs content/integration-architect/daypo-review-2026-11-06.json 3
+```
+
+Sin `--apply` solo valida. Al aplicar guarda una copia privada de las preguntas y
+respuestas originales en `data/daypo-before-review-*.json`. Comprueba las huellas,
+el examen de destino y que el material no haya cambiado mientras se actualiza;
+una discrepancia cancela la operación completa. Conserva IDs, opciones, imágenes,
+etiquetas y enunciados. La única clave cambiada en esta revisión es P007.
+
 No subas `.env`, tokens, contraseñas ni `data/` a GitHub. Para pruebas locales sin cuentas deja las variables Turso vacías y `NUXT_AUTH_MODE=local`; así solo se usa SQLite en tu equipo.
 
 La actualización de dependencias mantiene Nuxt 3. La auditoría aún informa de avisos en herramientas transitivas de desarrollo y compilación (devtools, simple-git, glob y certificados de desarrollo). No uses `npm audit fix --force`: propone una versión antigua de Nuxt. Revisa esos avisos al actualizar las herramientas; devtools permanece desactivado y esas herramientas no se incluyen en el servidor compilado.

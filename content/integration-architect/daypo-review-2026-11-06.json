@@ -1,0 +1,181 @@
+{
+  "date": "2026-11-06",
+  "examName": "Salesforce Platform Integration Architect",
+  "screenedQuestions": 102,
+  "scope": "Lectura conceptual de las 102 entradas, incluidas las variantes. Se documentan las incidencias contrastadas; no equivale a disponer del solucionario oficial del examen.",
+  "updates": [
+    {
+      "ref": "P007",
+      "status": "corrected",
+      "correctIndex": 2,
+      "explanation": "Corrección técnica: entre estas opciones, la llamada entrante a un servicio Apex REST es la que permite implementar la actualización requerida sin conceder al usuario edición general del campo. La REST API estándar aplica FLS: con ese mismo usuario y el campo de solo lectura, la actualización no está permitida. Esta conclusión asume el contexto Summer '23 de la guía del examen, anterior a API 67.0. Desde API 67.0 las operaciones de base de datos de Apex usan user mode por defecto; un servicio actual necesita una operación explícita y autorizada en system mode si el requisito de negocio exige esa escritura. with sharing por sí solo no controla FLS. El endpoint debe limitarse al campo y operación necesarios y validar el usuario, el registro y los datos. No significa que cualquier servicio Apex REST pueda escribir el campo automáticamente.",
+      "sources": [
+        "https://developer.salesforce.com/docs/platform/apex-dev/references/apex-dev/apex-rest-exposing-data.html",
+        "https://developer.salesforce.com/docs/atlas.en-us.integration_patterns_and_practices.meta/integ_pat_tempate.htm",
+        "https://developer.salesforce.com/docs/platform/apex-dev/references/apex-dev/versioned-behavior-changes.html"
+      ],
+      "expectedHash": "da7754c2f2c7171d2c353638ce325c24a31cceecf62d502dbd47399288f111cc"
+    },
+    {
+      "ref": "P008",
+      "status": "pending",
+      "explanation": "Enunciado incoherente con la clave Daypo: pide actualizaciones masivas, pero sObject Tree sirve para CREAR árboles de registros, hasta 200, no para actualizar registros existentes. Para actualizar hasta 200 registros con una petición REST, el recurso específico es sObject Collections, que no aparece entre las opciones. Composite puede combinar subpeticiones y recursos, pero eso no valida la clave sObject Tree. Se conserva la clave original solo para consultar el material; esta pregunta no se utiliza en simulacros mientras no se aclare o reformule.",
+      "sources": [
+        "https://developer.salesforce.com/docs/platform/api-rest/guide/resources-composite-sobject-tree.html",
+        "https://developer.salesforce.com/blogs/2024/04/accessing-object-data-with-salesforce-platform-apis"
+      ],
+      "expectedHash": "1ed06b32d8243dad12bde5d2712d8dd7c8521e81a023df738aee5973cb1bdbce"
+    },
+    {
+      "ref": "P012",
+      "status": "pending",
+      "explanation": "Named Credential permite cambiar el endpoint sin modificar el código que lo referencia. Remote Site Settings solo autoriza direcciones: cambiar su entrada no redirige un endpoint hardcodeado. Además, no hace falta Remote Site Settings para el endpoint definido mediante Named Credential. Dos opciones incluyen Named Credentials y el enunciado no explica qué controles adicionales necesita la integración. No hay base suficiente para presentar una pareja concreta como única solución validada; se conserva la clave Daypo como referencia y se excluye del simulacro.",
+      "sources": [
+        "https://developer.salesforce.com/docs/platform/apex-dev/references/apex-dev/apex-callouts-named-credentials.html"
+      ],
+      "expectedHash": "1226c83fb4268d9a75e8a65308535e194f58e0859a44b19614e2ad852b40e2f7"
+    },
+    {
+      "ref": "P024",
+      "status": "clarified",
+      "explanation": "Flow es la opción declarativa mejor ajustada entre las propuestas. Si el contrato exige invocar directamente un endpoint HTTP del middleware, se necesita un mecanismo de callout adecuado, por ejemplo una ruta asíncrona con HTTP Callout/External Services y Named Credential. Publicar un Platform Event no hace por sí mismo una llamada a ese endpoint: el middleware necesita un suscriptor que procese el evento. CDC también requiere un consumidor externo; Outbound Messaging usa SOAP y no satisface directamente el contrato REST descrito.",
+      "sources": [
+        "https://help.salesforce.com/s/articleView?id=platform.flow_http_callout.htm&language=en_US&type=5",
+        "https://architect.salesforce.com/docs/architect/decision-guides/guide/record-triggered.html"
+      ],
+      "expectedHash": "83061c9bc2ea7a6f9aeb791771b24b897390144307a2c70352ed6e6bd1185724"
+    },
+    {
+      "ref": "P034",
+      "status": "clarified",
+      "explanation": "La opción de procesar el pago una sola vez expresa idempotencia: el receptor debe reconocer el GUID y evitar repetir el efecto de negocio de una petición ya aplicada. Los reintentos ayudan a recuperar fallos transitorios. Esto no significa que una deduplicación aislada resuelva todos los bloqueos entre actualizaciones legítimas del mismo registro: también se necesita control de concurrencia y una política de reintentos. La clave Daypo se mantiene; no se promete entrega exactamente una vez por el mero uso de mensajería.",
+      "sources": [
+        "https://architect.salesforce.com/docs/architect/fundamentals/guide/integration-patterns"
+      ],
+      "expectedHash": "401b55f643b28323100efe0f4da1961454113e4169cf764c91da1ebc685c2b64"
+    },
+    {
+      "ref": "P037",
+      "status": "clarified",
+      "explanation": "Para dimensionar una consulta síncrona de disponibilidad durante el checkout importan los tiempos de respuesta habituales y de peor caso, junto con la concurrencia y capacidad del servicio remoto. Se mantiene la opción sobre tiempos de respuesta. Corrección de la explicación anterior: desde Winter '20, el tiempo de todos los callouts se excluye del límite de long-running requests. Los timeouts, la experiencia de usuario y la capacidad del destino siguen siendo restricciones, aunque no exista ese consumo de concurrencia por tiempo de callout.",
+      "sources": [
+        "https://developer.salesforce.com/docs/platform/lwc/guide/apex-continuations.html"
+      ],
+      "expectedHash": "38140a4ce9cdfe169d21ef2f2a60ae6b11f63eeec36d94a578602086d9fbec18"
+    },
+    {
+      "ref": "P040",
+      "status": "clarified",
+      "explanation": "Continuation es la opción adecuada para gestionar una respuesta lenta desde la interfaz con un callback, siempre que se respeten los timeouts de Salesforce y de la infraestructura intermedia. No proporciona un resultado inmediato ni amplía el timeout del gateway. La justificación antigua sobre evitar el límite de long-running requests está desactualizada: desde Winter '20 todos los callouts están excluidos de ese cómputo. La ventaja de Continuation es la gestión de llamadas y la experiencia de usuario.",
+      "sources": [
+        "https://developer.salesforce.com/docs/platform/lwc/guide/apex-continuations.html"
+      ],
+      "expectedHash": "11dba9721b4c1d1d421d77711ea9029e885b84588d4805505d7b0b41294a60b3"
+    },
+    {
+      "ref": "P041",
+      "status": "pending",
+      "explanation": "No hay evidencia suficiente para validar la clave Daypo como única respuesta. La baja se origina en RR. HH. y requiere comunicar el cambio a Salesforce, pero antes de diseñarla también hay que concretar el plazo de bloqueo, requisitos de acceso, sesiones, autenticación y restricciones de integración. La opción de requisitos de prevención de acceso, integración y restricciones del sistema es defendible, igual que analizar el flujo entrante y su frecuencia. La documentación confirma mecanismos de desactivación o congelación, no la precedencia entre estas opciones. Se conserva la clave solo como referencia y no se puntúa.",
+      "sources": [
+        "https://help.salesforce.com/s/articleView?id=users_freeze.htm&language=en_US&type=0",
+        "https://help.salesforce.com/s/articleView?id=sf.how_to_deactivate_users.htm&language=en_US&type=5"
+      ],
+      "expectedHash": "a45f8fd6eac2c81eec435d81f4c73d0cb55d245aea5eafdc043e64db8c5639d6"
+    },
+    {
+      "ref": "P044",
+      "status": "pending",
+      "explanation": "El enunciado no indica Publish Behavior, por lo que no puede elegirse de forma única entre publicación inmediata y publicación tras commit. Publish Immediately no respeta el límite de la transacción: el evento puede publicarse antes de completarse y aunque después haya rollback. Publish After Commit lo publica solo tras un commit satisfactorio. Tampoco puede inferirse que el publicador sea Apex, pues existen otros mecanismos de publicación. Se conserva A exclusivamente como clave original Daypo, sin validarla ni puntuar esta pregunta. Para corregir el ejercicio habría que especificar el comportamiento configurado, no suponerlo.",
+      "sources": [
+        "https://developer.salesforce.com/docs/platform/platform-events/guide/platform-events-intro-emp.html",
+        "https://developer.salesforce.com/docs/atlas.en-us.integration_patterns_and_practices.meta/integ_pat_patterns_platform.htm"
+      ],
+      "expectedHash": "91b98ff4cccd5da0dd803a1d2fb02e5285c447a0a3ab17c9ac614870d2f26104"
+    },
+    {
+      "ref": "P054",
+      "status": "pending",
+      "explanation": "El contexto dice unmanaged packages, pero la ocultación de secretos mediante Protected Custom Settings o Protected Custom Metadata requiere el contexto protegido de un paquete gestionado. Named Credentials sí es apropiado para gestionar autenticación de callouts. Además, en un paquete gestionado tanto los settings protegidos como los metadata protegidos pueden servir, con diferencias de mantenimiento. Las opciones B y C no permiten resolver de forma única el ejercicio tal como está escrito. La clave original se conserva para consulta y queda fuera de los simulacros.",
+      "sources": [
+        "https://trailhead.salesforce.com/content/learn/modules/secure-secrets-storage/protect-secrets-using-platform-features"
+      ],
+      "expectedHash": "4ab15f6636af17bf95ce06e8b4b5e16283594823711106239026b1a3be32e557"
+    },
+    {
+      "ref": "P061",
+      "status": "pending",
+      "explanation": "Un API Gateway puede aplicar autenticación y transformaciones por consumidor, por lo que la clave C describe una solución posible. Sin embargo, la opción B sitúa protocolos y formatos en el primer nivel orientado a los consumidores de la arquitectura ya definida y no puede descartarse con la información aportada. El enunciado no aclara si falta un gateway ni qué diferencia funcional pretende evaluar. No se cambia la clave por otra igualmente plausible: se conserva la referencia Daypo, se explica la limitación y se excluye del simulacro.",
+      "sources": [
+        "https://docs.mulesoft.com/api-manager/latest/api-proxy-landing-page"
+      ],
+      "expectedHash": "0d8f8425f0611b7e3e7972c98e9ab7c08e819efbf7d62cbd99c3f8c13a002452"
+    },
+    {
+      "ref": "P070",
+      "status": "clarified",
+      "explanation": "Se mantiene la opción de reintentar desde Data Entry Point y middleware para recuperar fallos de entrega. Los reintentos deben tener límites y backoff y pueden producir duplicados; el Payment System necesita deduplicación idempotente mediante el GUID. Ni los reintentos ni Queueable garantizan por sí solos un único efecto de negocio. Los conflictos entre actualizaciones legítimas del mismo registro requieren además control de concurrencia.",
+      "sources": [
+        "https://architect.salesforce.com/docs/architect/fundamentals/guide/integration-patterns"
+      ],
+      "expectedHash": "fe087f1cb6a651307232cbfc3b35a76922858e1292185cc5825d5cb62ac757c7"
+    },
+    {
+      "ref": "P074",
+      "status": "clarified",
+      "explanation": "Fire and Forget desacopla la recepción del pico de solicitudes del procesamiento de reservas. Una cola o middleware puede amortiguar la carga y regular el ritmo del sistema de scheduling. La reserva necesita un estado pendiente y una confirmación posterior de disponibilidad; enviar una solicitud no asegura una plaza. La explicación anterior atribuía el problema al límite de long-running requests: el tiempo de callout está excluido de ese cómputo, aunque la capacidad del destino y los timeouts siguen importando.",
+      "sources": [
+        "https://architect.salesforce.com/docs/architect/fundamentals/guide/async-fundamentals"
+      ],
+      "expectedHash": "48dc40ec40358fa795406f388b50153ef36fb16dcebe598383b47ccd64dd9278"
+    },
+    {
+      "ref": "P076",
+      "status": "clarified",
+      "explanation": "La consideración de borrado es válida: eliminar la definición del Platform Event la elimina permanentemente y también afecta a los eventos publicados con esa definición. Corrección del descarte anterior: AssetTokenEvent sí es un evento estándar de la plataforma para actividad OAuth de dispositivos; no debe confundirse sin más con Real-Time Event Monitoring. Las otras frases no describen el mismo riesgo de ciclo de vida del evento de integración. Se mantiene la clave de borrado irreversible.",
+      "sources": [
+        "https://help.salesforce.com/s/articleView?id=platform.platform_events.htm&language=en_US&type=5",
+        "https://developer.salesforce.com/docs/platform/platform-events/guide/platform-events-intro-emp.html"
+      ],
+      "expectedHash": "510efd7832e0aa953632ea9c285b37ef137a382397007c6bc2a004fc16106357"
+    },
+    {
+      "ref": "P078",
+      "status": "pending",
+      "explanation": "Named Credential configura el endpoint y la autenticación, pero no envía ni sincroniza Leads por sí sola. Hace falta una acción que cree el registro en destino, por ejemplo un Flow con HTTP Callout o un servicio que invoque REST. La explicación original parece completar esta variante con una acción que no figura en la respuesta seleccionada. El enunciado y las opciones no bastan para acreditar una solución completa y única de mínimo desarrollo; se conserva la clave original como referencia y no se utiliza para puntuar.",
+      "sources": [
+        "https://developer.salesforce.com/docs/platform/apex-dev/references/apex-dev/apex-callouts-named-credentials.html"
+      ],
+      "expectedHash": "9e7cd2b917108757e508a486c8855a0e9a0fbb3b4d7ed0e02698dd3b79fa133a"
+    },
+    {
+      "ref": "P087",
+      "status": "clarified",
+      "explanation": "Entre las opciones, Queueable con gestión de errores permite una integración asíncrona con seguimiento y recuperación. Debe implementar Database.AllowsCallouts cuando haga callouts. Queueable no garantiza exactamente una ejecución del efecto remoto: tras un timeout puede haberse procesado ya el pedido. Para facturar una sola vez se necesita una clave idempotente y deduplicación atómica en el receptor, además de reintentos y conciliación. Incluso la deduplicación de jobs en cola no evita todos los duplicados de jobs que ya estén ejecutándose.",
+      "sources": [
+        "https://developer.salesforce.com/docs/platform/apex-dev/references/apex-dev/apex-dedupe-queueable.html",
+        "https://architect.salesforce.com/docs/architect/fundamentals/guide/integration-patterns"
+      ],
+      "expectedHash": "850f6cef7488ffe8a116e703dec7538cbe99dc9008922d91a9e3777bc936a23a"
+    },
+    {
+      "ref": "P094",
+      "status": "clarified",
+      "explanation": "Flow permite publicar el Platform Event al crear Order y es la opción declarativa seleccionada. Esa publicación no invoca directamente el endpoint REST del ERP: se necesita un suscriptor en el middleware que procese el evento. Si el contrato exige HTTP directo, se debe diseñar un callout declarativo adecuado en vez de confundir el evento con una llamada REST. CDC también requiere consumidor externo, y Outbound Messaging usa SOAP. Se mantiene la clave con esa condición de arquitectura explícita.",
+      "sources": [
+        "https://help.salesforce.com/s/articleView?id=platform.flow_http_callout.htm&language=en_US&type=5",
+        "https://architect.salesforce.com/docs/architect/decision-guides/guide/record-triggered.html"
+      ],
+      "expectedHash": "4638ef4e32a370108f34b73d05af0ad76cf2c42a380bae887fd2b002f3ab41eb"
+    },
+    {
+      "ref": "P102",
+      "status": "clarified",
+      "explanation": "Se mantiene la opción sobre cuántas llamadas concurrentes se realizan: permite dimensionar capacidad, latencia y timeouts del servicio de disponibilidad y reserva. Corrección de la explicación original: desde Winter '20 el tiempo de callout no consume el límite de long-running requests. Eso no elimina los límites de callout ni hace infinita la capacidad del sistema remoto.",
+      "sources": [
+        "https://developer.salesforce.com/docs/platform/lwc/guide/apex-continuations.html",
+        "https://architect.salesforce.com/docs/architect/fundamentals/guide/async-fundamentals"
+      ],
+      "expectedHash": "7991794094767ad0cf8e5173699f7603144d04d60797b6d7425552f1fcd8b590"
+    }
+  ]
+}

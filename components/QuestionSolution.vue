@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Question } from '~/types/quiz'
 import { pdfSolution } from '~/utils/pdf-solution.mjs'
+import { isReviewPending } from '~/utils/daypo-review.mjs'
 
 const props = withDefaults(defineProps<{ question: Question, compact?: boolean, showNote?: boolean }>(), { compact: false, showNote: true })
 const { t } = useLanguage()
@@ -39,7 +40,7 @@ const source = computed(() => pdfSolution(props.question))
   <div v-else-if="source || question.explanation || (showNote && question.note)" class="stack">
     <div v-if="source && !source.consistent" class="banner warning" role="alert">{{ t('La clave actual no coincide con la referencia del PDF. Revisa esta pregunta antes de usarla para estudiar.') }}</div>
     <p v-if="compact && question.explanation" class="muted solution-text" style="margin-bottom: 0;">{{ question.explanation }}</p>
-    <div v-else-if="question.explanation" class="banner success solution-text">
+    <div v-else-if="question.explanation" class="banner solution-text" :class="isReviewPending(question) ? 'warning' : 'success'">
       <strong>{{ t('Explicación:') }}</strong> {{ question.explanation }}
     </div>
     <div v-if="showNote && question.note" class="banner warning">

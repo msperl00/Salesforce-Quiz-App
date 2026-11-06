@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Question } from '~/types/quiz'
+import { isReviewPending } from '~/utils/daypo-review.mjs'
 const { t } = useLanguage()
 
 const props = defineProps<{
@@ -38,6 +39,9 @@ const emit = defineEmits<{
 
     <div v-if="questions.length" class="question-list">
       <article v-for="question in visibleQuestions" :key="question.id" class="question-card">
+        <p v-if="isReviewPending(question)" class="banner warning">
+          {{ t('Pregunta pendiente de revisión. La respuesta marcada es la clave original de Daypo, no una solución validada.') }}
+        </p>
         <img
           v-if="question.imageUrl"
           class="question-image compact"

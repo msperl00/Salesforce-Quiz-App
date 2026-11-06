@@ -2,6 +2,9 @@ export const supportedLanguages = ['es', 'en', 'it']
 
 // Only interface text is translated. Question-bank content is never passed here.
 export const uiMessages = {
+  '{count} preguntas pendientes de revisión quedan fuera del simulacro. Puedes consultarlas en Estudiar.': ['{count} questions awaiting review are excluded from the practice exam. You can read them in Study.', '{count} domande in attesa di revisione sono escluse dalla simulazione. Puoi consultarle in Studia.'],
+  'Pregunta pendiente de revisión. La respuesta marcada es la clave original de Daypo, no una solución validada.': ['Question awaiting review. The marked answer is the original Daypo key, not a validated solution.', 'Domanda in attesa di revisione. La risposta indicata è la chiave originale di Daypo, non una soluzione verificata.'],
+  'No se pudo repetir el simulacro. Revisa la conexión y comprueba que todas sus preguntas sigan disponibles y sin revisión pendiente.': ['This practice exam could not be repeated. Check your connection and make sure all its questions are still available and not awaiting review.', 'Impossibile ripetere la simulazione. Verifica la connessione e che tutte le domande siano ancora disponibili e non in attesa di revisione.'],
   'Repetir este simulacro': ['Repeat this practice exam', 'Ripeti questa simulazione'],
   'Mismas preguntas, mismo orden y mismo modo, con las respuestas en blanco.': ['Same questions, order and mode, with blank answers.', 'Stesse domande, stesso ordine e modalità, con risposte vuote.'],
   'Guardando simulacro en tu historial...': ['Saving this practice exam to your history...', 'Salvataggio della simulazione nella cronologia...'],

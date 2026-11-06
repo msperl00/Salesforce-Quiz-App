@@ -4,12 +4,15 @@ import { questionTags, sampleQuestions } from '~/utils/quiz.mjs'
 import { allowsMultipleAnswers, canRevealAnswers, evaluateSelection, selectAnswer } from '~/utils/exam-session.mjs'
 import { answerBadge, answerFeedback } from '~/utils/pdf-solution.mjs'
 import { replayQuestions } from '~/utils/replay.mjs'
+import { examReadyQuestions } from '~/utils/daypo-review.mjs'
 
 const api = useQuizApi()
 const { t, language } = useLanguage()
 
 const { data: allQuestions, pending, error, refresh } = await useQuestionBank(api)
-const tags = computed<(Tag & { count: number })[]>(() => questionTags(allQuestions.value))
+const readyQuestions = computed(() => examReadyQuestions(allQuestions.value))
+const excludedCount = computed(() => allQuestions.value.length - readyQuestions.value.length)
+const tags = computed<(Tag & { count: number })[]>(() => questionTags(readyQuestions.value))
 const selectedTag = ref(typeof useRoute().query.tag === 'string' ? String(useRoute().query.tag) : '')
 const desiredCount = ref(Math.min(10, allQuestions.value.length) || 1)
 const mode = ref<SessionMode>('practice')
@@ -51,8 +54,8 @@ const feedbackMessage = computed(() => {
   return 'Sin responder.'
 })
 const pool = computed(() => selectedTag.value
-  ? allQuestions.value.filter(question => question.tags.some(tag => tag.name === selectedTag.value))
-  : allQuestions.value)
+  ? readyQuestions.value.filter(question => question.tags.some(tag => tag.name === selectedTag.value))
+  : readyQuestions.value)
 const validCount = computed(() => Number.isInteger(desiredCount.value)
   && desiredCount.value >= 1 && desiredCount.value <= pool.value.length)
 const inProgress = computed(() => started.value && !submitted.value)
@@ -119,7 +122,7 @@ async function repeatSavedExam(attempt: SavedAttempt) {
   try {
     await refresh()
     if (error.value) throw error.value
-    const questions = replayQuestions(allQuestions.value, attempt.questionIds, api.examId)
+    const questions = replayQuestions(readyQuestions.value, attempt.questionIds, api.examId)
     if (!questions) throw new Error('Unavailable questions')
     mode.value = attempt.mode
     desiredCount.value = questions.length
@@ -213,11 +216,14 @@ const score = computed(() => {
 <template>
   <div class="stack reading-page">
     <ExamHeading :exam-id="api.examId" />
+    <div v-if="excludedCount" class="banner warning" role="status">
+      {{ t('{count} preguntas pendientes de revisión quedan fuera del simulacro. Puedes consultarlas en Estudiar.', { count: excludedCount }) }}
+    </div>
     <div v-if="saveFailed" class="banner warning" role="alert">
       {{ t('No se pudo guardar el simulacro en tu historial. Puedes repetir el actual sin salir de esta página.') }}
       <button class="btn ghost small" type="button" :disabled="saving" @click="savePendingAttempts">{{ t('Reintentar guardado') }}</button>
     </div>
-    <div v-if="repeatFailed" class="banner warning" role="alert">{{ t('No se pudo repetir el simulacro. Revisa la conexión; si se borró o movió alguna pregunta, ya no se puede repetir completo.') }}</div>
+    <div v-if="repeatFailed" class="banner warning" role="alert">{{ t('No se pudo repetir el simulacro. Revisa la conexión y comprueba que todas sus preguntas sigan disponibles y sin revisión pendiente.') }}</div>
     <div v-if="pending" class="banner" role="status">{{ t('Cargando preguntas...') }}</div>
     <div v-if="error" class="banner warning" role="alert">
       {{ t('No se pudieron cargar las preguntas.') }}
@@ -249,7 +255,7 @@ const score = computed(() => {
         <div class="field">
           <label for="tag">{{ t('Etiqueta') }}</label>
           <select id="tag" v-model="selectedTag" :disabled="inProgress || repeating">
-            <option value="">{{ t('Todas ({count})', { count: allQuestions.length }) }}</option>
+            <option value="">{{ t('Todas ({count})', { count: readyQuestions.length }) }}</option>
             <option v-for="tag in tags" :key="tag.id" :value="tag.name">{{ tag.name }} ({{ tag.count }})</option>
           </select>
         </div>

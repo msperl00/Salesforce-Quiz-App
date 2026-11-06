@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Question, Tag } from '~/types/quiz'
 import { questionTags, shuffledQuestions } from '~/utils/quiz.mjs'
+import { isReviewPending } from '~/utils/daypo-review.mjs'
 
 const api = useQuizApi()
 const { t } = useLanguage()
@@ -91,6 +92,9 @@ function previousQuestion() {
     </section>
 
     <section v-if="currentQuestion" class="study-card panel">
+      <div v-if="isReviewPending(currentQuestion)" class="banner warning" role="status">
+        {{ t('Pregunta pendiente de revisión. La respuesta marcada es la clave original de Daypo, no una solución validada.') }}
+      </div>
       <div class="study-controls session-controls" role="group" :aria-label="t('Navegación de preguntas')">
         <button class="btn ghost" type="button" @click="previousQuestion">{{ t('Anterior') }}</button>
         <button class="btn primary" type="button" @click="reveal = !reveal">
