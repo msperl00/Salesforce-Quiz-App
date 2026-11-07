@@ -2,6 +2,8 @@ export const supportedLanguages = ['es', 'en', 'it']
 
 // Only interface text is translated. Question-bank content is never passed here.
 export const uiMessages = {
+  'Ver diagrama a tamaño completo': ['View full-size diagram', 'Visualizza il diagramma a dimensione intera'],
+  'Ver diagrama a tamaño completo (se abre en otra pestaña)': ['View full-size diagram (opens in a new tab)', 'Visualizza il diagramma a dimensione intera (si apre in una nuova scheda)'],
   'Correcta según Daypo': ['Correct according to Daypo', 'Corretta secondo Daypo'],
   'Incorrecta según Daypo': ['Incorrect according to Daypo', 'Errata secondo Daypo'],
   'Respuesta correcta según Daypo.': ['Correct answer according to Daypo.', 'Risposta corretta secondo Daypo.'],

@@ -325,12 +325,7 @@ const score = computed(() => {
         <span v-else class="session-position">{{ currentIndex + 1 }} / {{ examQuestions.length }}</span>
         <button class="btn ghost" type="button" :disabled="currentIndex === examQuestions.length - 1" @click="currentIndex += 1">{{ t('Siguiente') }}</button>
       </div>
-      <img
-        v-if="currentQuestion.imageUrl"
-        class="question-image"
-        :src="currentQuestion.imageUrl"
-        :alt="t('Imagen de apoyo para la pregunta')"
-      >
+      <ExamDiagram v-if="currentQuestion.imageUrl" :src="currentQuestion.imageUrl" />
 
       <div class="section-title">
         <div>
@@ -402,12 +397,7 @@ const score = computed(() => {
           :key="question.id"
           class="result-card"
         >
-          <img
-            v-if="question.imageUrl"
-            class="question-image compact"
-            :src="question.imageUrl"
-            :alt="t('Imagen de apoyo para la pregunta')"
-          >
+          <ExamDiagram v-if="question.imageUrl" :src="question.imageUrl" />
           <div class="section-title">
             <p>{{ question.prompt }}</p>
             <strong>{{ t(isQuestionCorrect(question) ? 'OK' : 'FAIL') }}</strong>
