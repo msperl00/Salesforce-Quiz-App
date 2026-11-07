@@ -30,7 +30,7 @@ export function planDaypoReview(questions, review) {
       || !Number.isSafeInteger(update.correctIndex) || update.correctIndex < 0 || update.correctIndex >= original.answers.length)) {
       throw new Error(`${update.ref}: clave inválida.`)
     }
-    const oldKey = original.answers.map((answer, index) => answer.isCorrect ? String.fromCharCode(65 + index) : '').join(', ')
+    const oldKey = original.answers.flatMap((answer, index) => answer.isCorrect ? [String.fromCharCode(65 + index)] : []).join(', ')
     const label = update.status === 'pending' ? 'PENDIENTE' : update.status === 'corrected' ? 'CORREGIDA' : 'ACLARADA'
     return { original, updated: { ...original,
       note: `${original.note}\nRevisión Daypo (${review.date}): ${label}. Clave original: ${oldKey}.`,

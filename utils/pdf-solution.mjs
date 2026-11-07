@@ -1,3 +1,5 @@
+import { daypoSolution } from './daypo-solution.mjs'
+
 const marker = '\n\nPara entenderlo y recordarlo:\n'
 
 export function pdfSolution(question) {
@@ -16,12 +18,14 @@ export function pdfSolution(question) {
 }
 
 export function answerBadge(question, correct) {
+  if (daypoSolution(question)?.consistent) return correct ? 'Correcta según Daypo' : 'Incorrecta según Daypo'
   return pdfSolution(question)?.consistent
     ? correct ? 'Correcta según el PDF' : 'Incorrecta según el PDF'
     : correct ? 'Correcta' : 'Incorrecta'
 }
 
 export function answerFeedback(question, correct) {
+  if (daypoSolution(question)?.consistent) return correct ? 'Respuesta correcta según Daypo.' : 'Respuesta incorrecta según Daypo.'
   return pdfSolution(question)?.consistent
     ? correct ? 'Respuesta correcta según el PDF.' : 'Respuesta incorrecta según el PDF.'
     : correct ? 'Respuesta correcta.' : 'Respuesta incorrecta.'

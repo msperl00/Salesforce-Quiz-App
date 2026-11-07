@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { Question } from '~/types/quiz'
 import { pdfSolution } from '~/utils/pdf-solution.mjs'
-import { isReviewPending } from '~/utils/daypo-review.mjs'
+import { daypoSolution } from '~/utils/daypo-solution.mjs'
 
 const props = withDefaults(defineProps<{ question: Question, compact?: boolean, showNote?: boolean }>(), { compact: false, showNote: true })
 const { t } = useLanguage()
 const source = computed(() => pdfSolution(props.question))
+const daypo = computed(() => daypoSolution(props.question))
 </script>
 
 <template>
@@ -37,10 +38,21 @@ const source = computed(() => pdfSolution(props.question))
       </div>
     </details>
   </div>
+  <div v-else-if="daypo?.consistent" class="stack">
+    <div class="banner success solution-text">
+      <strong>{{ t('Respuesta según Daypo:') }}</strong>
+      <p>{{ daypo.letters }}) {{ daypo.answers.join(' · ') }}</p>
+      <p v-if="daypo.original">{{ daypo.original }}</p>
+    </div>
+    <details v-if="daypo.clarification" :key="question.id" class="pdf-source-details">
+      <summary>{{ t('Aclaración técnica (no cambia la clave Daypo)') }}</summary>
+      <p class="solution-text" style="margin-top: .75rem;">{{ daypo.clarification }}</p>
+    </details>
+  </div>
   <div v-else-if="source || question.explanation || (showNote && question.note)" class="stack">
     <div v-if="source && !source.consistent" class="banner warning" role="alert">{{ t('La clave actual no coincide con la referencia del PDF. Revisa esta pregunta antes de usarla para estudiar.') }}</div>
     <p v-if="compact && question.explanation" class="muted solution-text" style="margin-bottom: 0;">{{ question.explanation }}</p>
-    <div v-else-if="question.explanation" class="banner solution-text" :class="isReviewPending(question) ? 'warning' : 'success'">
+    <div v-else-if="question.explanation" class="banner success solution-text">
       <strong>{{ t('Explicación:') }}</strong> {{ question.explanation }}
     </div>
     <div v-if="showNote && question.note" class="banner warning">

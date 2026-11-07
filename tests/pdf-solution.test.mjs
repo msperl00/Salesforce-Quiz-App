@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { answerBadge, answerFeedback, pdfSolution } from '../utils/pdf-solution.mjs'
-import { evaluateSelection } from '../utils/exam-session.mjs'
+import { allowsMultipleAnswers, evaluateSelection } from '../utils/exam-session.mjs'
+import { daypoClarificationMarker, daypoSolution } from '../utils/daypo-solution.mjs'
 
 function question(number = 97, letter = 'b', key = 'Malting') {
   const index = letter.charCodeAt(0) - 97
@@ -72,4 +73,16 @@ test('PDF feedback is qualified and ordinary learning text stays separate from o
   value.explanation = 'Respuesta original sin apoyo añadido.'
   assert.equal(pdfSolution(value).original, value.explanation)
   assert.equal(pdfSolution(value).learning, '')
+})
+
+test('Daypo explanations are separate from the source key and preserve multiple answers when present', () => {
+  const value = { note: 'Origen: Daypo · P001\nClave Daypo: A, C.',
+    explanation: `Original${daypoClarificationMarker}Una aclaración técnica.`,
+    answers: [{ id: 1, text: 'A', isCorrect: true }, { id: 2, text: 'B', isCorrect: false }, { id: 3, text: 'C', isCorrect: true }] }
+  assert.deepEqual(daypoSolution(value), { letters: 'A, C', answers: ['A', 'C'], consistent: true, original: 'Original', clarification: 'Una aclaración técnica.' })
+  assert.equal(allowsMultipleAnswers(value), true)
+  assert.equal(evaluateSelection(value, [1]), 'partial')
+  assert.equal(evaluateSelection(value, [1, 3]), 'correct')
+  assert.equal(answerFeedback(value, true), 'Respuesta correcta según Daypo.')
+  assert.equal(daypoSolution({ ...value, note: 'Clave Daypo: A.' }).consistent, false)
 })

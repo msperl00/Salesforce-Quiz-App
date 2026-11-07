@@ -1,5 +1,11 @@
 # Revisión de Daypo — 6 de noviembre de 2026
 
+El 7 de noviembre se restauraron las claves y explicaciones del XML y las 102
+preguntas volvieron al simulacro. La P007 puntúa con B y la P044 con A, según
+Daypo. Los 14 XML temáticos y el general marcan una sola respuesta por entrada.
+Las 18 observaciones se muestran como aclaraciones técnicas separadas. El texto
+que sigue documenta la revisión inicial y sus decisiones anteriores.
+
 Se han leído las 102 entradas del banco, incluidas sus variantes. La revisión es
 técnica y conceptual: no constituye un solucionario oficial de Salesforce ni una
 certificación de las respuestas que no presentan incidencias detectadas.

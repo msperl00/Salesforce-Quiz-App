@@ -8,8 +8,6 @@ import { createClient } from '@libsql/client'
 import { migrateDatabase } from '../server/database/schema.mjs'
 import { importNewQuestionBank } from '../server/database/import-bank.mjs'
 import { questionFingerprint, planDaypoReview, saveDaypoReview } from '../scripts/review-daypo.mjs'
-import { examReadyQuestions, isReviewPending } from '../utils/daypo-review.mjs'
-import { replayQuestions } from '../utils/replay.mjs'
 
 const source = [7, 44].map(number => ({ prompt: `Original scenario ${number}`, explanation: 'Original explanation',
   note: `Origen: Daypo · P${String(number).padStart(3, '0')}`, tags: ['Integration'],
@@ -36,7 +34,7 @@ async function fixture(run) {
   } finally { db.close(); await rm(directory, { recursive: true, force: true }) }
 }
 
-test('review changes only an explicitly corrected key, preserves IDs and original questions, and quarantines ambiguous entries', () => fixture(async (db, examId, read) => {
+test('the historical review records ambiguity and changes only an explicitly selected answer key', () => fixture(async (db, examId, read) => {
   const before = await read()
   const plan = planDaypoReview(before, review)
   await saveDaypoReview(db, examId, plan)
@@ -47,11 +45,7 @@ test('review changes only an explicitly corrected key, preserves IDs and origina
   assert.deepEqual(after[0].answers.map(a => a.isCorrect), [false, false, true])
   assert.deepEqual(after[1].answers.map(a => a.isCorrect), [true, false, false])
   assert.deepEqual(after.map(q => q.answers.map(a => a.id)), before.map(q => q.answers.map(a => a.id)))
-  assert.equal(isReviewPending(after[1]), true)
-  const ready = examReadyQuestions(after)
-  assert.equal(ready.length, 1)
-  assert.equal(ready[0].id, after[0].id)
-  assert.equal(replayQuestions(ready.map(q => ({ ...q, examId })), after.map(q => q.id), examId), null)
+  assert.match(after[1].note, /PENDIENTE\. Clave original: A\./)
   assert.throws(() => planDaypoReview(after, review), /ya se revisó/)
 }))
 
@@ -66,10 +60,3 @@ test('a concurrent question edit or wrong destination causes an atomic rollback'
   assert.equal((await read())[1].explanation, 'Concurrent edit')
   assert.equal((await db.execute("SELECT count(*) AS n FROM sqlite_master WHERE name = 'daypo_review_guard'")).rows[0].n, 0)
 }))
-
-test('only the explicit note marker quarantines a question; normal notes and corrected entries remain available', () => {
-  for (const note of ['', 'Pregunta ambigua en otro contexto', 'Revisión Daypo (2026-11-06): CORREGIDA.']) {
-    assert.equal(isReviewPending({ note }), false)
-  }
-  assert.equal(isReviewPending({ note: 'Origen: Daypo · P044\nRevisión Daypo (2026-11-06): PENDIENTE. Clave original: A.' }), true)
-})
